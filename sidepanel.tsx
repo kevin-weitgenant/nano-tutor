@@ -14,7 +14,8 @@ import "./style.css"
  */
 function SidePanel() {
   // Initialize AI session
-  const { session, apiAvailable, initializationMessages } = useAISession()
+  const { session, apiAvailable, initializationMessages, resetSession } =
+    useAISession()
 
   // Initialize messages with welcome message
   const [messages, setMessages] = useState<Message[]>([
@@ -33,7 +34,7 @@ function SidePanel() {
   }, [initializationMessages])
 
   // Handle message streaming
-  const { isStreaming, sendMessage } = useStreamingResponse(
+  const { isStreaming, sendMessage, tokenInfo } = useStreamingResponse(
     session,
     messages,
     setMessages
@@ -47,6 +48,18 @@ function SidePanel() {
     setInputText("")
   }
 
+  // Handle session reset - resets both session and messages
+  const handleResetSession = async () => {
+    await resetSession()
+    setMessages([
+      {
+        id: Date.now(),
+        ...INITIAL_BOT_MESSAGE,
+        timestamp: new Date()
+      }
+    ])
+  }
+
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       <ChatHeader apiAvailable={apiAvailable} />
@@ -57,6 +70,9 @@ function SidePanel() {
         onSend={handleSend}
         isStreaming={isStreaming}
         apiAvailable={apiAvailable}
+        tokenInfo={tokenInfo}
+        session={session}
+        onReset={handleResetSession}
       />
     </div>
   )

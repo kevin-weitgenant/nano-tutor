@@ -7,6 +7,7 @@ interface UseAISessionReturn {
   session: LanguageModelSession | null
   apiAvailable: boolean | null
   initializationMessages: Message[]
+  resetSession: () => Promise<void>
 }
 
 /**
@@ -19,6 +20,56 @@ export function useAISession(): UseAISessionReturn {
   const [initializationMessages, setInitializationMessages] = useState<
     Message[]
   >([])
+
+  // Helper function to create a new session
+  const createSession = async (): Promise<LanguageModelSession | null> => {
+    // Check if LanguageModel API is available (supports both old and new API shapes)
+    const hasNewAPI = "ai" in self && self.ai?.languageModel
+    const hasOldAPI = "LanguageModel" in self
+
+    if (!hasNewAPI && !hasOldAPI) {
+      return null
+    }
+
+    const languageModel = hasNewAPI
+      ? self.ai!.languageModel!
+      : self.LanguageModel!
+
+    const newSession = await languageModel.create({
+      temperature: AI_CONFIG.temperature,
+      topK: AI_CONFIG.topK,
+      initialPrompts: [
+        {
+          role: "system",
+          content: SYSTEM_PROMPT
+        }
+      ]
+    })
+    return newSession
+  }
+
+  // Reset session function - destroys current session and creates a new one
+  const resetSession = async () => {
+    try {
+      // Destroy current session if it exists
+      if (session?.destroy) {
+        session.destroy()
+      }
+
+      // Create new session
+      const newSession = await createSession()
+      setSession(newSession)
+    } catch (error) {
+      console.error("Failed to reset session:", error)
+      const errorMessage: Message = {
+        id: Date.now(),
+        text: `Failed to reset session: ${error instanceof Error ? error.message : "Unknown error"}`,
+        sender: "bot",
+        timestamp: new Date()
+      }
+      setInitializationMessages([errorMessage])
+    }
+  }
 
   useEffect(() => {
     const checkAPIAndInitialize = async () => {
@@ -40,22 +91,9 @@ export function useAISession(): UseAISessionReturn {
 
       setApiAvailable(true)
 
-      // Create initial session using whichever API is available
+      // Create initial session
       try {
-        const languageModel = hasNewAPI
-          ? self.ai!.languageModel!
-          : self.LanguageModel!
-
-        const newSession = await languageModel.create({
-          temperature: AI_CONFIG.temperature,
-          topK: AI_CONFIG.topK,
-          initialPrompts: [
-            {
-              role: "system",
-              content: SYSTEM_PROMPT
-            }
-          ]
-        })
+        const newSession = await createSession()
         setSession(newSession)
       } catch (error) {
         console.error("Failed to create session:", error)
@@ -79,6 +117,6 @@ export function useAISession(): UseAISessionReturn {
     }
   }, [])
 
-  return { session, apiAvailable, initializationMessages }
+  return { session, apiAvailable, initializationMessages, resetSession }
 }
 

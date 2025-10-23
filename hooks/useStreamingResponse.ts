@@ -3,9 +3,16 @@ import type { LanguageModelSession } from "../types/chrome-ai"
 import type { Message } from "../types/message"
 import { ERROR_MESSAGES } from "../utils/constants"
 
+export interface TokenInfo {
+  inputUsage: number    // Tokens used so far
+  tokensLeft: number    // Tokens remaining (calculated)
+  inputQuota: number    // Total token quota
+}
+
 interface UseStreamingResponseReturn {
   isStreaming: boolean
   sendMessage: (text: string) => Promise<void>
+  tokenInfo: TokenInfo
 }
 
 /**
@@ -18,6 +25,11 @@ export function useStreamingResponse(
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>
 ): UseStreamingResponseReturn {
   const [isStreaming, setIsStreaming] = useState(false)
+  const [tokenInfo, setTokenInfo] = useState<TokenInfo>({
+    inputUsage: 0,
+    tokensLeft: 0,
+    inputQuota: 0
+  })
   const streamingMessageRef = useRef<string>("")
   const streamingMessageIdRef = useRef<number | null>(null)
 
@@ -96,9 +108,20 @@ export function useStreamingResponse(
       setIsStreaming(false)
       streamingMessageRef.current = ""
       streamingMessageIdRef.current = null
+
+      // Update token information from session
+      if (session?.inputUsage !== undefined && session?.inputQuota !== undefined) {
+        const usage = session.inputUsage ?? 0
+        const quota = session.inputQuota ?? 0
+        setTokenInfo({
+          inputUsage: usage,
+          tokensLeft: quota - usage,
+          inputQuota: quota
+        })
+      }
     }
   }
 
-  return { isStreaming, sendMessage }
+  return { isStreaming, sendMessage, tokenInfo }
 }
 

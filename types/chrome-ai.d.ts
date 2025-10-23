@@ -5,11 +5,16 @@ export interface LanguageModelSession {
   destroy?: () => void
   temperature?: number
   topK?: number
+
+  // Token counting and quota management (official API)
+  measureInputUsage: (input: string) => Promise<number>
+  inputUsage: number  // Current token usage (read-only)
+  inputQuota: number  // Total token quota available (read-only)
+
+  // Legacy properties (for backward compatibility, not in official spec)
   maxTokens?: number
   tokensSoFar?: number
   tokensLeft?: number
-  inputQuota?: number
-  inputUsage?: number
 }
 
 export interface LanguageModel {
