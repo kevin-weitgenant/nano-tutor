@@ -1,7 +1,6 @@
 export {}
 
-// Listen for clicks on the extension icon
+// Listen for extension icon clicks to open side panel
 chrome.action.onClicked.addListener((tab) => {
   chrome.sidePanel.open({ windowId: tab.windowId })
 })
-
