@@ -2,7 +2,7 @@
   "name": "youtube-learn",
   "displayName": "Youtube learn",
   "version": "0.0.1",
-  "description": "A basic Plasmo extension.",
+  "description": "Chat with youtube videos using built in AI.",
   "author": "kevin castro weitgenant (kevin.weitgenant@gmail.com)",
   "scripts": {
     "dev": "plasmo dev",
@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@plasmohq/messaging": "^0.7.2",
+    "@plasmohq/storage": "^1.15.0",
     "lucide-react": "^0.546.0",
     "plasmo": "0.90.5",
     "react": "18.2.0",

@@ -60,7 +60,7 @@ export function ChatInput({
     return () => clearTimeout(timeoutId)
   }, [inputText, session])
 
-  const { inputUsage, tokensLeft, inputQuota } = tokenInfo
+  const { inputUsage, tokensLeft, inputQuota, systemPromptTokens, totalUsage } = tokenInfo
   const hasTokenInfo = inputQuota > 0
 
   return (
@@ -100,20 +100,29 @@ export function ChatInput({
       )}
 
       {/* Comprehensive token display */}
-      <div className="flex items-center gap-3 mt-3 mb-2">
-        <div className="flex items-center gap-2 text-xs">
+      <div className="flex flex-col gap-2 mt-3 mb-2">
+        <div className="flex items-center gap-2 text-xs flex-wrap">
           <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-medium">
-            Total: {hasTokenInfo ? inputQuota.toLocaleString() : "--"}
+            Quota: {hasTokenInfo ? inputQuota.toLocaleString() : "--"}
+          </span>
+          <span className="text-gray-400">•</span>
+          <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full font-medium">
+            System: {hasTokenInfo ? systemPromptTokens.toLocaleString() : "--"}
           </span>
           <span className="text-gray-400">•</span>
           <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">
-            Used: {hasTokenInfo ? inputUsage.toLocaleString() : "--"}
+            Messages: {hasTokenInfo ? inputUsage.toLocaleString() : "--"}
           </span>
           <span className="text-gray-400">•</span>
           <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded-full font-medium">
             Left: {hasTokenInfo ? tokensLeft.toLocaleString() : "--"}
           </span>
         </div>
+        {systemPromptTokens > 0 && hasTokenInfo && (
+          <p className="text-xs text-gray-600">
+            Total used: {totalUsage.toLocaleString()} tokens (System: {systemPromptTokens.toLocaleString()} + Messages: {inputUsage.toLocaleString()})
+          </p>
+        )}
       </div>
 
       {/* Help text */}
