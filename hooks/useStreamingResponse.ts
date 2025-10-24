@@ -63,8 +63,7 @@ export function useStreamingResponse(
     const userMessage: Message = {
       id: Date.now(),
       text: text,
-      sender: "user",
-      timestamp: new Date()
+      sender: "user"
     }
 
     setMessages((prev) => [...prev, userMessage])
@@ -109,8 +108,7 @@ export function useStreamingResponse(
           const newBotMessage: Message = {
             id: Date.now(),
             text: streamingMessageRef.current,
-            sender: "bot",
-            timestamp: new Date()
+            sender: "bot"
           }
           streamingMessageIdRef.current = newBotMessage.id
 
@@ -122,8 +120,7 @@ export function useStreamingResponse(
       const errorMessage: Message = {
         id: Date.now(),
         text: `${ERROR_MESSAGES.STREAMING_ERROR}: ${error instanceof Error ? error.message : "Unknown error"}`,
-        sender: "bot",
-        timestamp: new Date()
+        sender: "bot"
       }
       setMessages((prev) => [...prev, errorMessage])
     } finally {

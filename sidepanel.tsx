@@ -21,8 +21,7 @@ function SidePanel() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
-      ...buildInitialBotMessage(videoContext || undefined),
-      timestamp: new Date()
+      ...buildInitialBotMessage(videoContext || undefined)
     }
   ])
 
@@ -38,8 +37,7 @@ function SidePanel() {
     setMessages([
       {
         id: Date.now(),
-        ...buildInitialBotMessage(videoContext || undefined),
-        timestamp: new Date()
+        ...buildInitialBotMessage(videoContext || undefined)
       }
     ])
   }, [videoContext])
@@ -67,8 +65,7 @@ function SidePanel() {
     setMessages([
       {
         id: Date.now(),
-        ...buildInitialBotMessage(videoContext || undefined),
-        timestamp: new Date()
+        ...buildInitialBotMessage(videoContext || undefined)
       }
     ])
   }

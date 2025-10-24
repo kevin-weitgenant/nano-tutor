@@ -6,7 +6,7 @@ interface MessageItemProps {
 
 /**
  * Individual message bubble component
- * Displays a single message with timestamp
+ * Displays a single message
  */
 export function MessageItem({ message }: MessageItemProps) {
   return (
@@ -21,15 +21,6 @@ export function MessageItem({ message }: MessageItemProps) {
         <p className="text-sm whitespace-pre-wrap break-words">
           {message.text}
         </p>
-        <span
-          className={`text-xs mt-1 block ${
-            message.sender === "user" ? "text-blue-100" : "text-gray-500"
-          }`}>
-          {message.timestamp.toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit"
-          })}
-        </span>
       </div>
     </div>
   )

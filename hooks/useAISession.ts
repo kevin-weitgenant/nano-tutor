@@ -90,8 +90,7 @@ export function useAISession(): UseAISessionReturn {
       const errorMessage: Message = {
         id: Date.now(),
         text: `Failed to reset session: ${error instanceof Error ? error.message : "Unknown error"}`,
-        sender: "bot",
-        timestamp: new Date()
+        sender: "bot"
       }
       setInitializationMessages([errorMessage])
     }
@@ -108,8 +107,7 @@ export function useAISession(): UseAISessionReturn {
         const errorMessage: Message = {
           id: Date.now(),
           text: ERROR_MESSAGES.API_NOT_AVAILABLE,
-          sender: "bot",
-          timestamp: new Date()
+          sender: "bot"
         }
         setInitializationMessages([errorMessage])
         return
@@ -126,8 +124,7 @@ export function useAISession(): UseAISessionReturn {
         const errorMessage: Message = {
           id: Date.now(),
           text: `${ERROR_MESSAGES.SESSION_INIT_FAILED}: ${error instanceof Error ? error.message : "Unknown error"}`,
-          sender: "bot",
-          timestamp: new Date()
+          sender: "bot"
         }
         setInitializationMessages([errorMessage])
       }
