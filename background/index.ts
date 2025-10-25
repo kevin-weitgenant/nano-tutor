@@ -1,3 +1,9 @@
+import { pipeline } from "@huggingface/transformers"
+import { env } from "@huggingface/transformers"
+
+console.log(env,pipeline)
+
+
 export {}
 
 // Listen for extension icon clicks to open side panel
