@@ -1,6 +1,7 @@
 import type { PlasmoCSConfig } from "plasmo"
 import { useState } from "react"
 import { MessageCircle, Loader2, AlertCircle } from "lucide-react"
+import { sendToBackground } from "@plasmohq/messaging"
 import { storage } from "~utils/storage"
 import { extractYouTubeContext } from "~utils/youtubeTranscript"
 
@@ -38,7 +39,7 @@ const YoutubeChatButton = () => {
       await storage.set("videoContext", videoContext)
 
       // Open sidepanel
-      chrome.runtime.sendMessage({ action: "openSidePanel" })
+      await sendToBackground({ name: "openSidePanel" })
     } catch (err) {
       console.error("Failed to extract video context:", err)
       setError(
@@ -48,8 +49,8 @@ const YoutubeChatButton = () => {
       )
 
       // Still open sidepanel even if extraction fails
-      setTimeout(() => {
-        chrome.runtime.sendMessage({ action: "openSidePanel" })
+      setTimeout(async () => {
+        await sendToBackground({ name: "openSidePanel" })
       }, 2000)
     } finally {
       setIsLoading(false)
