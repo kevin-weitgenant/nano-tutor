@@ -53,18 +53,19 @@ const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async
     const embedder = await getEmbedder()
 
     // Step 3: Write initial progress
-    await storage.set<EmbeddingProgress>(progressKey, {
+    await storage.set(progressKey, {
       status: "embedding",
       progress: 0,
       currentStep: "Starting embedding...",
       currentChunk: 0,
       totalChunks: chunks.length,
       lastUpdated: Date.now()
-    })
+    } as EmbeddingProgress)
 
     // Step 4: Embed each chunk
     const embeddingStart = performance.now()
     const embeddedChunks: TranscriptChunk[] = []
+    let lastWrittenProgress = 0 // Track last progress % written to storage
 
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i]
@@ -86,15 +87,22 @@ const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async
 
       embeddedChunks.push(chunk)
 
-      // Update progress after each chunk
-      await storage.set<EmbeddingProgress>(progressKey, {
-        status: "embedding",
-        progress: Math.round(((i + 1) / chunks.length) * 100),
-        currentStep: `Embedding chunk ${i + 1}/${chunks.length}`,
-        currentChunk: i + 1,
-        totalChunks: chunks.length,
-        lastUpdated: Date.now()
-      })
+      // Update progress only every 10% or on last chunk to reduce storage writes
+      const currentProgress = Math.round(((i + 1) / chunks.length) * 100)
+      const isLastChunk = i === chunks.length - 1
+      const progressIncrement = currentProgress - lastWrittenProgress
+
+      if (progressIncrement >= 10 || isLastChunk) {
+        await storage.set(progressKey, {
+          status: "embedding",
+          progress: currentProgress,
+          currentStep: `Embedding chunk ${i + 1}/${chunks.length}`,
+          currentChunk: i + 1,
+          totalChunks: chunks.length,
+          lastUpdated: Date.now()
+        } as EmbeddingProgress)
+        lastWrittenProgress = currentProgress
+      }
     }
 
     const embeddingTime = performance.now() - embeddingStart
@@ -112,14 +120,14 @@ const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async
     console.log(`  Embedding dimensions: ${embeddedChunks[0].embedding?.length}`)
 
     // Mark embedding as complete
-    await storage.set<EmbeddingProgress>(progressKey, {
+    await storage.set(progressKey, {
       status: "ready",
       progress: 100,
       currentStep: "Complete!",
       currentChunk: chunks.length,
       totalChunks: chunks.length,
       lastUpdated: Date.now()
-    })
+    } as EmbeddingProgress)
 
     // Schedule cleanup after 5 seconds
     setTimeout(async () => {
@@ -142,13 +150,13 @@ const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async
     const storage = new Storage()
     const progressKey = `embeddingProgress-${videoId}`
 
-    await storage.set<EmbeddingProgress>(progressKey, {
+    await storage.set(progressKey, {
       status: "error",
       progress: 0,
       currentStep: "Embedding failed",
       error: error instanceof Error ? error.message : "Unknown error",
       lastUpdated: Date.now()
-    })
+    } as EmbeddingProgress)
 
     // Clean up error message after 10 seconds
     setTimeout(async () => {
