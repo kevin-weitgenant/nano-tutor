@@ -1,10 +1,18 @@
-import { pipeline } from "@huggingface/transformers"
-import { env } from "@huggingface/transformers"
+import { env, pipeline } from "@huggingface/transformers";
+
+
+
+
 
 console.log(env,pipeline)
 
+env.backends.onnx.wasm.proxy = false;
+(async () => {
+  const embedder = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2", { device: "webgpu" })
+  const output = await embedder("hello world", { pooling: "mean", normalize: true })
+  console.log("✅ GPU embeddings working! Shape:", output.dims)
+})()
 
-export {}
 
 // Listen for extension icon clicks to open side panel
 chrome.action.onClicked.addListener((tab) => {
@@ -19,3 +27,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
   return true // Required for async sendResponse
 })
+
+
+
+export {}
