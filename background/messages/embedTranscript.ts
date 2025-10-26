@@ -1,7 +1,8 @@
 import type { PlasmoMessaging } from "@plasmohq/messaging"
+import { Storage } from "@plasmohq/storage"
 import { getEmbedder } from "~background"
 import { chunkTranscript } from "~utils/textChunking"
-import type { TranscriptChunk } from "~types/transcript"
+import type { TranscriptChunk, EmbeddingProgress } from "~types/transcript"
 
 export type RequestBody = {
   transcript: string
@@ -36,6 +37,10 @@ const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async
     const videoId = extractVideoId(url)
     console.log(`🎬 Video ID: ${videoId}`)
 
+    // Initialize storage for progress tracking
+    const storage = new Storage()
+    const progressKey = `embeddingProgress-${videoId}`
+
     // Step 1: Chunk the transcript
     const chunkingStart = performance.now()
     const chunks = await chunkTranscript(transcript, videoId)
@@ -47,7 +52,17 @@ const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async
     // Step 2: Get embedder
     const embedder = await getEmbedder()
 
-    // Step 3: Embed each chunk
+    // Step 3: Write initial progress
+    await storage.set<EmbeddingProgress>(progressKey, {
+      status: "embedding",
+      progress: 0,
+      currentStep: "Starting embedding...",
+      currentChunk: 0,
+      totalChunks: chunks.length,
+      lastUpdated: Date.now()
+    })
+
+    // Step 4: Embed each chunk
     const embeddingStart = performance.now()
     const embeddedChunks: TranscriptChunk[] = []
 
@@ -70,6 +85,16 @@ const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async
       )
 
       embeddedChunks.push(chunk)
+
+      // Update progress after each chunk
+      await storage.set<EmbeddingProgress>(progressKey, {
+        status: "embedding",
+        progress: Math.round(((i + 1) / chunks.length) * 100),
+        currentStep: `Embedding chunk ${i + 1}/${chunks.length}`,
+        currentChunk: i + 1,
+        totalChunks: chunks.length,
+        lastUpdated: Date.now()
+      })
     }
 
     const embeddingTime = performance.now() - embeddingStart
@@ -86,6 +111,22 @@ const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async
     )
     console.log(`  Embedding dimensions: ${embeddedChunks[0].embedding?.length}`)
 
+    // Mark embedding as complete
+    await storage.set<EmbeddingProgress>(progressKey, {
+      status: "ready",
+      progress: 100,
+      currentStep: "Complete!",
+      currentChunk: chunks.length,
+      totalChunks: chunks.length,
+      lastUpdated: Date.now()
+    })
+
+    // Schedule cleanup after 5 seconds
+    setTimeout(async () => {
+      await storage.remove(progressKey)
+      console.log("🧹 Cleaned up progress notification")
+    }, 5000)
+
     res.send({
       success: true,
       chunkCount: chunks.length,
@@ -94,6 +135,26 @@ const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async
     })
   } catch (error) {
     console.error("❌ Embedding failed:", error)
+
+    // Write error status to storage
+    const { url } = req.body
+    const videoId = extractVideoId(url)
+    const storage = new Storage()
+    const progressKey = `embeddingProgress-${videoId}`
+
+    await storage.set<EmbeddingProgress>(progressKey, {
+      status: "error",
+      progress: 0,
+      currentStep: "Embedding failed",
+      error: error instanceof Error ? error.message : "Unknown error",
+      lastUpdated: Date.now()
+    })
+
+    // Clean up error message after 10 seconds
+    setTimeout(async () => {
+      await storage.remove(progressKey)
+    }, 10000)
+
     res.send({
       success: false,
       chunkCount: 0,

@@ -2,8 +2,10 @@ import type { PlasmoCSConfig } from "plasmo"
 import { useState } from "react"
 import { MessageCircle, Loader2, AlertCircle } from "lucide-react"
 import { sendToBackground } from "@plasmohq/messaging"
+import { useStorage } from "@plasmohq/storage/hook"
 import { storage } from "~utils/storage"
 import { extractYouTubeContext } from "~utils/youtubeTranscript"
+import type { EmbeddingProgress } from "~types/transcript"
 
 // Only run on YouTube video pages
 export const config: PlasmoCSConfig = {
@@ -20,12 +22,26 @@ export const getStyle = () => {
 }
 
 /**
+ * Extract YouTube video ID from current page URL
+ */
+function getCurrentVideoId(): string | null {
+  const match = window.location.href.match(/[?&]v=([^&]+)/)
+  return match ? match[1] : null
+}
+
+/**
  * YouTube Chat Button
  * A floating button that extracts transcript and opens the sidepanel
  */
 const YoutubeChatButton = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Watch embedding progress for current video
+  const videoId = getCurrentVideoId()
+  const [embeddingProgress] = useStorage<EmbeddingProgress>(
+    videoId ? `embeddingProgress-${videoId}` : null
+  )
 
   const handleOpenChat = async () => {
     setIsLoading(true)
@@ -95,6 +111,52 @@ const YoutubeChatButton = () => {
         <div className="fixed bottom-20 right-6 z-[9999] bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 max-w-sm">
           <AlertCircle size={20} />
           <span className="text-sm">{error}</span>
+        </div>
+      )}
+
+      {/* Embedding progress bar */}
+      {embeddingProgress &&
+        (embeddingProgress.status === "embedding" ||
+          embeddingProgress.status === "ready") && (
+          <div className="fixed bottom-24 right-6 z-[9999] bg-white rounded-lg shadow-xl p-4 w-80">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-700">
+                {embeddingProgress.currentStep}
+              </span>
+              <span className="text-xs text-gray-500">
+                {embeddingProgress.progress}%
+              </span>
+            </div>
+
+            {/* Progress bar */}
+            <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+              <div
+                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${embeddingProgress.progress}%` }}
+              />
+            </div>
+
+            {/* Chunk counter */}
+            {embeddingProgress.currentChunk !== undefined &&
+              embeddingProgress.totalChunks !== undefined && (
+                <div className="text-xs text-gray-500 text-center">
+                  {embeddingProgress.currentChunk} / {embeddingProgress.totalChunks}{" "}
+                  chunks
+                </div>
+              )}
+          </div>
+        )}
+
+      {/* Error status from embedding */}
+      {embeddingProgress && embeddingProgress.status === "error" && (
+        <div className="fixed bottom-24 right-6 z-[9999] bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 max-w-sm">
+          <AlertCircle size={20} />
+          <div>
+            <p className="text-sm font-medium">Embedding failed</p>
+            {embeddingProgress.error && (
+              <p className="text-xs mt-1">{embeddingProgress.error}</p>
+            )}
+          </div>
         </div>
       )}
     </>
