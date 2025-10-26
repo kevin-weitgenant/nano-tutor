@@ -38,7 +38,18 @@ const YoutubeChatButton = () => {
       // Store in Plasmo Storage for sidepanel to access
       await storage.set("videoContext", videoContext)
 
-      // Open sidepanel
+      // Trigger chunking + embedding in background (fire-and-forget, non-blocking)
+      sendToBackground({
+        name: "embedTranscript",
+        body: {
+          transcript: videoContext.transcript,
+          url: videoContext.url
+        }
+      }).then((result) => {
+        console.log("✅ Embedding complete:", result)
+      })
+
+      // Open sidepanel (don't wait for embedding)
       await sendToBackground({ name: "openSidePanel" })
     } catch (err) {
       console.error("Failed to extract video context:", err)
