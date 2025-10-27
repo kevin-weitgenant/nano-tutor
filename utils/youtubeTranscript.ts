@@ -5,6 +5,14 @@ import type { VideoContext } from "~types/transcript"
  * Based on the reference implementation for extracting transcripts from YouTube
  */
 
+/**
+ * Extract YouTube video ID from URL
+ */
+export function extractVideoId(url: string): string | null {
+  const match = url.match(/[?&]v=([^&]+)/)
+  return match ? match[1] : null
+}
+
 // Selectors for finding the transcript button
 const TRANSCRIPT_BUTTON_SELECTORS = [
   "button[aria-label*='transcript' i]",

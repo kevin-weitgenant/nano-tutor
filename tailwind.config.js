@@ -2,7 +2,14 @@
 module.exports = {
   mode: "jit",
   darkMode: "class",
-  content: ["./**/*.tsx"],
+  content: [
+    "./*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+    "./contents/**/*.{ts,tsx}",
+    "./hooks/**/*.{ts,tsx}",
+    "./background/**/*.{ts,tsx}",
+    "./utils/**/*.{ts,tsx}"
+  ],
   plugins: []
 }
 

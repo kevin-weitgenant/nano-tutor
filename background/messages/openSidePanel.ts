@@ -8,18 +8,11 @@ export type ResponseBody = {
 
 const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async (req, res) => {
   try {
-    // Get the tab that sent the message
-    const windowId = req.sender?.tab?.windowId
+    const tabId = req.sender?.tab?.id
 
-    if (!windowId) {
-      res.send({ success: false })
-      return
-    }
+    chrome.sidePanel.open({ tabId: tabId })
 
-    // Open the side panel for the current window
-    await chrome.sidePanel.open({ windowId })
-
-    res.send({ success: true })
+    
   } catch (error) {
     console.error("Failed to open side panel:", error)
     res.send({ success: false })
