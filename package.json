@@ -5,11 +5,13 @@
   "description": "Chat with youtube videos using built in AI.",
   "author": "kevin castro weitgenant (kevin.weitgenant@gmail.com)",
   "scripts": {
-    "dev": "pnpm with-env plasmo dev",
+    "dev": "node scripts/dev-with-fix.js",
+    "dev:plain": "pnpm with-env plasmo dev",
     "build": "pnpm with-env plasmo build",
     "package": "pnpm with-env plasmo package",
     "with-env": "dotenv -e .env --",
-    "postinstall": "node postinstall/run.js"
+    "postinstall": "node postinstall/run.js",
+    "postbuild": "node postbuild/fix-manifest.js"
   },
   "dependencies": {
     "@huggingface/transformers": "3.2.4",

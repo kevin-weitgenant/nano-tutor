@@ -1,4 +1,8 @@
-import { env, pipeline } from "@huggingface/transformers"
+import { env, pipeline } from "@huggingface/transformers";
+
+
+
+
 
 console.log(env, pipeline)
 
@@ -31,9 +35,23 @@ export async function getEmbedder() {
   return embedder
 }
 
-// Listen for extension icon clicks to open side panel
-chrome.action.onClicked.addListener((tab) => {
-  chrome.sidePanel.open({ windowId: tab.windowId })
+chrome.tabs.onUpdated.addListener(async (tabId, info, tab) => {
+  if (!tab.url) return
+  const url = new URL(tab.url)
+  // Enables the side panel on google.com
+  if (url.origin === "https://www.youtube.com") {
+    await chrome.sidePanel.setOptions({
+      tabId,
+      path: "sidepanel.html",
+      enabled: true
+    })
+  } else {
+    // Disables the side panel on all other sites
+    await chrome.sidePanel.setOptions({
+      tabId,
+      enabled: false
+    })
+  }
 })
 
 export {}
