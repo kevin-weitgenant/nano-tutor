@@ -83,7 +83,7 @@ async function openTranscriptPanel(): Promise<void> {
   transcriptButton.click()
 
   // Wait for transcript segments to appear in the DOM
-  await waitForElement(TRANSCRIPT_SEGMENT_SELECTORS, 10000, 100)
+  await waitForElement(TRANSCRIPT_SEGMENT_SELECTORS, 60000, 100)
 }
 
 /**

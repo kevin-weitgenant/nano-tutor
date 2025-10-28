@@ -1,11 +1,28 @@
-import { useEffect, useState } from "react"
-import type { Message } from "./types/message"
-import { useAISession } from "./hooks/useAISession"
-import { useStreamingResponse } from "./hooks/useStreamingResponse"
-import { MessageList } from "./components/MessageList"
-import { ChatInput } from "./components/ChatInput"
-import { buildInitialBotMessage } from "./utils/constants"
-import "./style.css"
+import { Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+
+
+
+import type { Message } from "./types/message";
+import type { VideoContext } from "./types/transcript";
+import { storage } from "./utils/storage";
+
+
+
+import "~style.css";
+
+
+
+import { useStorage } from "@plasmohq/storage/hook";
+
+
+
+import { ChatInput } from "./components/ChatInput";
+import { MessageList } from "./components/MessageList";
+import { useAISession } from "./hooks/useAISession";
+import { useStreamingResponse } from "./hooks/useStreamingResponse";
+import { buildInitialBotMessage } from "./utils/constants";
+
 
 /**
  * Main SidePanel component
@@ -14,44 +31,46 @@ import "./style.css"
  */
 function SidePanel() {
   // Initialize AI session (includes video context)
-  const { session, apiAvailable, initializationMessages, resetSession, videoContext, systemPromptTokens } =
-    useAISession()
+  const [messages, setMessages] = useState<Message[]>([])
+  const [inputText, setInputText] = useState("")
+  const [currentTabId, setCurrentTabId] = useState<number | null>(null)
 
-  // Initialize messages with context-aware welcome message
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      ...buildInitialBotMessage(videoContext || undefined)
-    }
-  ])
+  // Detect current tab ID
+  useEffect(() => {
+    chrome.tabs.query({ active: true, currentWindow: true }).then(tabs => {
+      if (tabs[0]?.id) {
+        setCurrentTabId(tabs[0].id)
+      }
+    })
+  }, [])
 
-  // Sync initialization messages (e.g., API errors) into local state
+  const [videoContext] = useStorage<VideoContext>({
+    key: currentTabId ? `videoContext_${currentTabId}` : null,
+    instance: storage
+  })
+
+  const {
+    session,
+    apiAvailable,
+    initializationMessages,
+    resetSession,
+    systemPromptTokens
+  } = useAISession({ videoContext })
+  
+  // Handle message streaming
+  const { isStreaming, sendMessage, tokenInfo, resetTokenInfo } =
+    useStreamingResponse(session, messages, setMessages, systemPromptTokens)
+  
+  
+    // Effect to handle initialization messages and readiness
   useEffect(() => {
     if (initializationMessages.length > 0) {
       setMessages(initializationMessages)
     }
   }, [initializationMessages])
 
-  // Update initial message when video context changes
-  useEffect(() => {
-    setMessages([
-      {
-        id: Date.now(),
-        ...buildInitialBotMessage(videoContext || undefined)
-      }
-    ])
-  }, [videoContext])
 
-  // Handle message streaming
-  const { isStreaming, sendMessage, tokenInfo, resetTokenInfo } = useStreamingResponse(
-    session,
-    messages,
-    setMessages,
-    systemPromptTokens
-  )
-
-  // Input state
-  const [inputText, setInputText] = useState("")
+ 
 
   const handleSend = async () => {
     await sendMessage(inputText)
@@ -73,7 +92,7 @@ function SidePanel() {
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Video Context Display */}
-      {videoContext && (
+      {videoContext ? (
         <div className="bg-blue-50 border-b border-blue-200 px-4 py-3">
           <div className="flex items-start gap-2">
             <span className="text-xl">💬</span>
@@ -84,6 +103,18 @@ function SidePanel() {
               <p className="text-xs text-blue-700 truncate">
                 by {videoContext.channel}
               </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-gray-100 border-b border-gray-200 px-4 py-3">
+          <div className="flex items-center gap-3">
+            <Loader2 size={20} className="animate-spin text-gray-600" />
+            <div className="flex-1">
+              <p className="text-sm text-gray-700 font-medium">
+                Waiting for video context...
+              </p>
+             
             </div>
           </div>
         </div>

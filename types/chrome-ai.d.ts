@@ -33,20 +33,10 @@ export interface LanguageModel {
 
 declare global {
   interface Window {
-    // New API shape (Chrome Canary/newer versions)
-    ai?: {
-      languageModel?: LanguageModel
-    }
-    // Old API shape (Chrome Stable/older versions)
+    // Stable API shape
     LanguageModel?: LanguageModel
   }
-  // New API shape
-  var ai:
-    | {
-        languageModel?: LanguageModel
-      }
-    | undefined
-  // Old API shape
+  // Stable API shape
   var LanguageModel: LanguageModel | undefined
 }
 

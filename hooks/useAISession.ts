@@ -1,26 +1,33 @@
-import { useEffect, useState } from "react"
-import { useStorage } from "@plasmohq/storage/hook"
-import type { LanguageModelSession } from "../types/chrome-ai"
-import type { Message } from "../types/message"
-import type { VideoContext } from "../types/transcript"
-import { buildSystemPrompt, AI_CONFIG, ERROR_MESSAGES } from "../utils/constants"
-import { storage } from "../utils/storage"
+import { useEffect, useState } from "react";
+
+
+
+import type { LanguageModelSession } from "../types/chrome-ai";
+import type { Message } from "../types/message";
+import type { VideoContext } from "../types/transcript";
+import { AI_CONFIG, buildSystemPrompt, ERROR_MESSAGES } from "../utils/constants";
+
+
+interface UseAISessionProps {
+  videoContext: VideoContext | null
+}
 
 interface UseAISessionReturn {
   session: LanguageModelSession | null
   apiAvailable: boolean | null
   initializationMessages: Message[]
   resetSession: () => Promise<void>
-  videoContext: VideoContext | null
   systemPromptTokens: number
 }
 
 /**
- * Custom hook to manage AI session initialization and cleanup
- * Checks for Prompt API availability and creates a session
- * Now includes video context support via Storage API
+ * Custom hook to manage AI session initialization and cleanup.
+ * Checks for Prompt API availability and creates a session based on video context.
+ * @param videoContext The video context to use for the session.
  */
-export function useAISession(): UseAISessionReturn {
+export function useAISession({
+  videoContext
+}: UseAISessionProps): UseAISessionReturn {
   const [session, setSession] = useState<LanguageModelSession | null>(null)
   const [apiAvailable, setApiAvailable] = useState<boolean | null>(null)
   const [initializationMessages, setInitializationMessages] = useState<
@@ -28,25 +35,54 @@ export function useAISession(): UseAISessionReturn {
   >([])
   const [systemPromptTokens, setSystemPromptTokens] = useState<number>(0)
 
-  // Read video context from storage (using local storage instance)
-  const [videoContext] = useStorage<VideoContext>({
-    key: "videoContext",
-    instance: storage
-  })
+  useEffect(() => {
+    const initializeSession = async () => {
+      if (!("LanguageModel" in self)) {
+        setApiAvailable(false)
+        const errorMessage: Message = {
+          id: Date.now(),
+          text: ERROR_MESSAGES.API_NOT_AVAILABLE,
+          sender: "bot"
+        }
+        setInitializationMessages([errorMessage])
+        return
+      }
+
+      setApiAvailable(true)
+
+      try {
+        const newSession = await createSession(videoContext)
+        setSession(newSession)
+      } catch (error) {
+        console.error("Failed to create session:", error)
+        const errorMessage: Message = {
+          id: Date.now(),
+          text: `${ERROR_MESSAGES.SESSION_INIT_FAILED}: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`,
+          sender: "bot"
+        }
+        setInitializationMessages([errorMessage])
+      }
+    }
+
+    initializeSession()
+
+    // Cleanup: destroy session on unmount or when videoContext changes
+    return () => {
+      session?.destroy()
+    }
+  }, [videoContext])
 
   // Helper function to create a new session with dynamic system prompt
-  const createSession = async (context?: VideoContext): Promise<LanguageModelSession | null> => {
-    // Check if LanguageModel API is available (supports both old and new API shapes)
-    const hasNewAPI = "ai" in self && self.ai?.languageModel
-    const hasOldAPI = "LanguageModel" in self
-
-    if (!hasNewAPI && !hasOldAPI) {
+  const createSession = async (
+    context?: VideoContext
+  ): Promise<LanguageModelSession | null> => {
+    if (!("LanguageModel" in self)) {
       return null
     }
 
-    const languageModel = hasNewAPI
-      ? self.ai!.languageModel!
-      : self.LanguageModel!
+    const languageModel = self.LanguageModel!
 
     // Build system prompt based on video context
     const systemPrompt = buildSystemPrompt(context)
@@ -83,7 +119,7 @@ export function useAISession(): UseAISessionReturn {
       }
 
       // Create new session with current video context
-      const newSession = await createSession(videoContext || undefined)
+      const newSession = await createSession(videoContext)
       setSession(newSession)
     } catch (error) {
       console.error("Failed to reset session:", error)
@@ -96,75 +132,11 @@ export function useAISession(): UseAISessionReturn {
     }
   }
 
-  useEffect(() => {
-    const checkAPIAndInitialize = async () => {
-      // Check if LanguageModel API is available (supports both old and new API shapes)
-      const hasNewAPI = "ai" in self && self.ai?.languageModel
-      const hasOldAPI = "LanguageModel" in self
-
-      if (!hasNewAPI && !hasOldAPI) {
-        setApiAvailable(false)
-        const errorMessage: Message = {
-          id: Date.now(),
-          text: ERROR_MESSAGES.API_NOT_AVAILABLE,
-          sender: "bot"
-        }
-        setInitializationMessages([errorMessage])
-        return
-      }
-
-      setApiAvailable(true)
-
-      // Create initial session with video context
-      try {
-        const newSession = await createSession(videoContext || undefined)
-        setSession(newSession)
-      } catch (error) {
-        console.error("Failed to create session:", error)
-        const errorMessage: Message = {
-          id: Date.now(),
-          text: `${ERROR_MESSAGES.SESSION_INIT_FAILED}: ${error instanceof Error ? error.message : "Unknown error"}`,
-          sender: "bot"
-        }
-        setInitializationMessages([errorMessage])
-      }
-    }
-
-    checkAPIAndInitialize()
-
-    // Cleanup: destroy session on unmount
-    return () => {
-      if (session?.destroy) {
-        session.destroy()
-      }
-    }
-  }, [])
-
-  // Re-create session when video context changes
-  useEffect(() => {
-    const updateSessionWithContext = async () => {
-      if (!apiAvailable) return
-
-      try {
-        // Destroy current session if it exists
-        if (session?.destroy) {
-          session.destroy()
-        }
-
-        // Create new session with updated video context
-        const newSession = await createSession(videoContext || undefined)
-        setSession(newSession)
-      } catch (error) {
-        console.error("Failed to update session with video context:", error)
-      }
-    }
-
-    // Only update if we already have API available and videoContext has changed
-    if (apiAvailable !== null && videoContext !== undefined) {
-      updateSessionWithContext()
-    }
-  }, [videoContext])
-
-  return { session, apiAvailable, initializationMessages, resetSession, videoContext, systemPromptTokens }
+  return {
+    session,
+    apiAvailable,
+    initializationMessages,
+    resetSession,
+    systemPromptTokens
+  }
 }
-

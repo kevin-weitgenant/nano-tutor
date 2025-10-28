@@ -8,6 +8,7 @@ export type RequestBody = {}
 
 export type ResponseBody = {
   success: boolean
+  tabId?: number
 }
 
 const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async (req, res) => {
@@ -15,7 +16,7 @@ const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async
     const tabId = req.sender?.tab?.id
 
     chrome.sidePanel.open({ tabId: tabId })
-    res.send({ success: true })
+    res.send({ success: true, tabId })
 
     
   } catch (error) {

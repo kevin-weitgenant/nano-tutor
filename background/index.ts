@@ -72,6 +72,8 @@ chrome.webNavigation.onHistoryStateUpdated.addListener(
           enabled: true
         })
         await chrome.storage.session.remove(details.tabId.toString())
+        // Clear the tab-specific video context from local storage to avoid showing stale data
+        await chrome.storage.local.remove(`videoContext_${details.tabId}`)
       }
     }
   },
@@ -80,6 +82,8 @@ chrome.webNavigation.onHistoryStateUpdated.addListener(
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   chrome.storage.session.remove(tabId.toString())
+  // Clean up tab-specific video context
+  chrome.storage.local.remove(`videoContext_${tabId}`)
 })
 
 export {}

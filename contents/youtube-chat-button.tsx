@@ -1,3 +1,4 @@
+;
 // Inject Tailwind styles into the shadow DOM
 import cssText from "data-text:~style.css";
 import { AlertCircle, Loader2, MessageCircle } from "lucide-react";
@@ -7,6 +8,8 @@ import { useState } from "react";
 
 
 import { sendToBackground } from "@plasmohq/messaging";
+
+
 
 import { storage } from "~utils/storage";
 import { extractYouTubeContext } from "~utils/youtubeTranscript";
@@ -42,20 +45,25 @@ const YoutubeChatButton = () => {
     setError(null)
 
     try {
+      // Open the side panel and get the tab ID
+      const response = await sendToBackground({ name: "openSidePanel" })
+      const tabId = response?.tabId
+
+      if (!tabId) {
+        throw new Error("Could not determine tab ID")
+      }
+
       // Extract video context (transcript + metadata)
       const videoContext = await extractYouTubeContext()
 
-      // Store in Plasmo Storage for sidepanel to access
-      await storage.set("videoContext", videoContext)
+      // Store in Plasmo Storage with tab-scoped key
+      await storage.set(`videoContext_${tabId}`, videoContext)
 
       // Set video for current tab to enable auto-closing panel on navigation
       await sendToBackground({
         name: "setVideoForTab",
         body: { videoId: videoContext.videoId }
       })
-
-      // Open the side panel
-      await sendToBackground({ name: "openSidePanel" })
     } catch (err) {
       console.error("Failed to extract video context:", err)
       setError(
