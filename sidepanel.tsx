@@ -19,7 +19,9 @@ import { useStorage } from "@plasmohq/storage/hook";
 
 import { ChatInput } from "./components/ChatInput";
 import { MessageList } from "./components/MessageList";
+import { ModelDownload } from "./components/ModelDownload";
 import { useAISession } from "./hooks/useAISession";
+import { useModelAvailability } from "./hooks/useModelAvailability";
 import { useStreamingResponse } from "./hooks/useStreamingResponse";
 import { buildInitialBotMessage } from "./utils/constants";
 
@@ -49,13 +51,24 @@ function SidePanel() {
     instance: storage
   })
 
+  // Check model availability and handle downloads
+  const { 
+    availability, 
+    downloadProgress, 
+    isExtracting, 
+    startDownload 
+  } = useModelAvailability()
+
   const {
     session,
     apiAvailable,
     initializationMessages,
     resetSession,
     systemPromptTokens
-  } = useAISession({ videoContext })
+  } = useAISession({ 
+    videoContext, 
+    shouldInitialize: availability === 'available'
+  })
   
   // Handle message streaming
   const { isStreaming, sendMessage, tokenInfo, resetTokenInfo } =
@@ -121,16 +134,25 @@ function SidePanel() {
       )}
 
       <MessageList messages={messages} />
-      <ChatInput
-        inputText={inputText}
-        setInputText={setInputText}
-        onSend={handleSend}
-        isStreaming={isStreaming}
-        apiAvailable={apiAvailable}
-        tokenInfo={tokenInfo}
-        session={session}
-        onReset={handleResetSession}
-      />
+      {availability !== 'available' ? (
+        <ModelDownload
+          availability={availability}
+          downloadProgress={downloadProgress}
+          isExtracting={isExtracting}
+          onStartDownload={startDownload}
+        />
+      ) : (
+        <ChatInput
+          inputText={inputText}
+          setInputText={setInputText}
+          onSend={handleSend}
+          isStreaming={isStreaming}
+          apiAvailable={apiAvailable}
+          tokenInfo={tokenInfo}
+          session={session}
+          onReset={handleResetSession}
+        />
+      )}
     </div>
   )
 }

@@ -10,6 +10,7 @@ import { AI_CONFIG, buildSystemPrompt, ERROR_MESSAGES } from "../utils/constants
 
 interface UseAISessionProps {
   videoContext: VideoContext | null
+  shouldInitialize: boolean
 }
 
 interface UseAISessionReturn {
@@ -26,7 +27,8 @@ interface UseAISessionReturn {
  * @param videoContext The video context to use for the session.
  */
 export function useAISession({
-  videoContext
+  videoContext,
+  shouldInitialize
 }: UseAISessionProps): UseAISessionReturn {
   const [session, setSession] = useState<LanguageModelSession | null>(null)
   const [apiAvailable, setApiAvailable] = useState<boolean | null>(null)
@@ -37,6 +39,11 @@ export function useAISession({
 
   useEffect(() => {
     const initializeSession = async () => {
+      // Don't initialize if we shouldn't yet (e.g., model not available)
+      if (!shouldInitialize) {
+        return
+      }
+
       if (!("LanguageModel" in self)) {
         setApiAvailable(false)
         const errorMessage: Message = {
@@ -72,7 +79,7 @@ export function useAISession({
     return () => {
       session?.destroy()
     }
-  }, [videoContext])
+  }, [videoContext, shouldInitialize])
 
   // Helper function to create a new session with dynamic system prompt
   const createSession = async (

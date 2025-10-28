@@ -17,12 +17,28 @@ export interface LanguageModelSession {
   tokensLeft?: number
 }
 
+// Download progress event
+export interface DownloadProgressEvent {
+  loaded: number  // 0 to 1 (percentage as decimal)
+  total: number   // always 1
+}
+
+// Monitor callback for tracking download
+export interface CreateMonitor {
+  addEventListener(
+    type: 'downloadprogress',
+    listener: (event: DownloadProgressEvent) => void
+  ): void
+}
+
 export interface LanguageModel {
   create: (options: {
     temperature?: number
     topK?: number
     initialPrompts?: Array<{ role: string; content: string }>
+    monitor?: (m: CreateMonitor) => void
   }) => Promise<LanguageModelSession>
+  availability: () => Promise<'available' | 'downloadable' | 'downloading' | 'unavailable'>
   params?: () => Promise<{
     defaultTopK: number
     maxTopK: number
