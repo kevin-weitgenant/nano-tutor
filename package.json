@@ -40,8 +40,14 @@
     "typescript": "5.3.3"
   },
   "manifest": {
+    "permissions": [
+      "sidePanel",
+      "storage",
+      "tabs",
+      "webNavigation"
+    ],
     "host_permissions": [
-      "https://*/*"
+      "https://www.youtube.com/*"
     ],
     "content_security_policy": {
       "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"

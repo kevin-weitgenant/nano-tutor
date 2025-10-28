@@ -6,6 +6,40 @@ import type { VideoContext } from "~types/transcript"
  */
 
 /**
+ * Waits for element(s) to appear in the DOM
+ * @param selectors - Single selector or array of selectors to try
+ * @param timeout - Maximum time to wait in milliseconds (default: 10000)
+ * @param pollInterval - How often to check in milliseconds (default: 100)
+ * @returns The found element(s)
+ * @throws Error if timeout is reached without finding elements
+ */
+async function waitForElement(
+  selectors: string | string[],
+  timeout: number = 60000,
+  pollInterval: number = 100
+): Promise<Element | NodeListOf<Element>> {
+  const startTime = Date.now()
+  const selectorArray = Array.isArray(selectors) ? selectors : [selectors]
+
+  while (Date.now() - startTime < timeout) {
+    // Try each selector
+    for (const selector of selectorArray) {
+      const elements = document.querySelectorAll(selector)
+      if (elements.length > 0) {
+        return elements.length === 1 ? elements[0] : elements
+      }
+    }
+
+    // Wait before next poll
+    await new Promise((resolve) => setTimeout(resolve, pollInterval))
+  }
+
+  throw new Error(
+    `Timeout waiting for element(s). Tried selectors: ${selectorArray.join(", ")}`
+  )
+}
+
+/**
  * Extract YouTube video ID from URL
  */
 export function extractVideoId(url: string): string | null {
@@ -30,7 +64,7 @@ const TRANSCRIPT_SEGMENT_SELECTORS = [
 
 /**
  * Opens the YouTube transcript panel by clicking the transcript button
- * Waits for the panel to load
+ * Waits for the panel to load by polling for transcript segments
  */
 async function openTranscriptPanel(): Promise<void> {
   let transcriptButton: HTMLElement | null = null
@@ -48,8 +82,8 @@ async function openTranscriptPanel(): Promise<void> {
   // Click to open the transcript panel
   transcriptButton.click()
 
-  // Wait for the transcript panel to load
-  await new Promise((resolve) => setTimeout(resolve, 1000))
+  // Wait for transcript segments to appear in the DOM
+  await waitForElement(TRANSCRIPT_SEGMENT_SELECTORS, 10000, 100)
 }
 
 /**
@@ -145,9 +179,14 @@ export async function extractYouTubeContext(): Promise<VideoContext> {
 
     // Step 4: Get video metadata
     const { title, url, channel } = getVideoMetadata()
+    const videoId = extractVideoId(url)
+    if (!videoId) {
+      throw new Error("Could not extract video ID from URL")
+    }
 
     // Return the complete context
     return {
+      videoId,
       transcript,
       title,
       url,

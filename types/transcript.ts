@@ -3,6 +3,8 @@
  * Stores YouTube video metadata and transcript for AI context
  */
 export interface VideoContext {
+  /** The YouTube video ID */
+  videoId: string
   /** The full transcript text from the YouTube video */
   transcript: string
   /** The title of the YouTube video */

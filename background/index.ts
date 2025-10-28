@@ -54,4 +54,32 @@ chrome.tabs.onUpdated.addListener(async (tabId, info, tab) => {
   }
 })
 
+chrome.webNavigation.onHistoryStateUpdated.addListener(
+  async (details) => {
+    if (details.url.includes("/watch")) {
+      const newVideoId = new URL(details.url).searchParams.get("v")
+      const data = await chrome.storage.session.get(details.tabId.toString())
+      const currentVideoId = data[details.tabId.toString()]
+
+      if (currentVideoId && currentVideoId !== newVideoId) {
+        // Video has changed, close the side panel by disabling and re-enabling
+        await chrome.sidePanel.setOptions({
+          tabId: details.tabId,
+          enabled: false
+        })
+        await chrome.sidePanel.setOptions({
+          tabId: details.tabId,
+          enabled: true
+        })
+        await chrome.storage.session.remove(details.tabId.toString())
+      }
+    }
+  },
+  { url: [{ hostContains: "www.youtube.com" }] }
+)
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  chrome.storage.session.remove(tabId.toString())
+})
+
 export {}

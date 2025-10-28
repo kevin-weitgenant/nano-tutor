@@ -1,4 +1,8 @@
-import type { PlasmoMessaging } from "@plasmohq/messaging"
+import type { PlasmoMessaging } from "@plasmohq/messaging";
+
+
+
+
 
 export type RequestBody = {}
 
@@ -11,6 +15,7 @@ const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async
     const tabId = req.sender?.tab?.id
 
     chrome.sidePanel.open({ tabId: tabId })
+    res.send({ success: true })
 
     
   } catch (error) {
