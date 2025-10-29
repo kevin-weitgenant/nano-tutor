@@ -41,10 +41,12 @@ async function waitForElement(
 
 /**
  * Extract YouTube video ID from URL
+ * @param url - YouTube video URL
+ * @returns Video ID or "unknown" if not found
  */
-export function extractVideoId(url: string): string | null {
+export function extractVideoId(url: string): string {
   const match = url.match(/[?&]v=([^&]+)/)
-  return match ? match[1] : null
+  return match ? match[1] : "unknown"
 }
 
 // Selectors for finding the transcript button
@@ -180,7 +182,7 @@ export async function extractYouTubeContext(): Promise<VideoContext> {
     // Step 4: Get video metadata
     const { title, url, channel } = getVideoMetadata()
     const videoId = extractVideoId(url)
-    if (!videoId) {
+    if (videoId === "unknown") {
       throw new Error("Could not extract video ID from URL")
     }
 

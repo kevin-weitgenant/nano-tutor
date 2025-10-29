@@ -2,6 +2,7 @@ import type { PlasmoMessaging } from "@plasmohq/messaging"
 import { Storage } from "@plasmohq/storage"
 import { getEmbedder } from "~background"
 import { chunkTranscript } from "~utils/textChunking"
+import { extractVideoId } from "~utils/youtubeTranscript"
 import type { TranscriptChunk, EmbeddingProgress } from "~types/transcript"
 
 export type RequestBody = {
@@ -14,14 +15,6 @@ export type ResponseBody = {
   chunkCount: number
   totalTimeMs: number
   avgTimePerChunk: number
-}
-
-/**
- * Extract YouTube video ID from URL
- */
-function extractVideoId(url: string): string {
-  const match = url.match(/[?&]v=([^&]+)/)
-  return match ? match[1] : "unknown"
 }
 
 const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async (req, res) => {

@@ -38,7 +38,6 @@ export async function chunkTranscript(
     videoId,
     text,
     chunkIndex: index
-    // embedding will be added by worker in Phase 2
   }))
 
   return chunks

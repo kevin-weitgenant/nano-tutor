@@ -1,4 +1,4 @@
-import { chunkTranscript, shouldUseRAG } from "./utils/textChunking"
+import { chunkTranscript, shouldUseRAG } from "../src/utils/textChunking"
 
 async function testChunking() {
   // Create a sample transcript (~2500 chars)
