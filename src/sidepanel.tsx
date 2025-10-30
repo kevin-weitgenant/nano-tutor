@@ -1,7 +1,7 @@
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-
+import { Storage } from "@plasmohq/storage";
 
 import type { Message } from "./types/message";
 import type { VideoContext } from "./types/transcript";
@@ -47,8 +47,16 @@ function SidePanel() {
     })
   }, [])
 
+  // Get videoId from session storage (tab → videoId mapping)
+  const sessionStorage = new Storage({ area: "session" })
+  const [videoId] = useStorage<string>({
+    key: currentTabId?.toString() || null,
+    instance: sessionStorage
+  })
+
+  // Read from video-centric key instead of tab-centric
   const [videoContext] = useStorage<VideoContext>({
-    key: currentTabId ? `videoContext_${currentTabId}` : null,
+    key: videoId ? `videoContext_${videoId}` : null,
     instance: storage
   })
 

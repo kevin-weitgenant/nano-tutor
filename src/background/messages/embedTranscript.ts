@@ -35,7 +35,7 @@ const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async
     console.log(`🎬 Video ID: ${videoId}`)
 
     // Initialize storage for progress tracking
-    const storage = new Storage()
+    const storage = new Storage({ area: "session" })
     const progressKey = `embeddingProgress-${videoId}`
 
     // Step 1: Chunk the transcript
@@ -150,7 +150,7 @@ const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async
     // Write error status to storage
     const { url } = req.body
     const videoId = extractVideoId(url)
-    const storage = new Storage()
+    const storage = new Storage({ area: "session" })
     const progressKey = `embeddingProgress-${videoId}`
 
     await storage.set(progressKey, {

@@ -11,7 +11,8 @@ import { sendToBackground } from "@plasmohq/messaging";
 
 
 
-import { storage } from "~utils/storage";
+import { storage, cleanupVideoStorage } from "~utils/storage";
+import type { VideoContext } from "~types/transcript";
 import { extractYouTubeContext } from "~utils/youtubeTranscript";
 
 
@@ -53,13 +54,31 @@ const YoutubeChatButton = () => {
         throw new Error("Could not determine tab ID")
       }
 
-      // Extract video context (transcript + metadata)
-      const videoContext = await extractYouTubeContext()
+      // Extract videoId from URL
+      const videoId = new URL(window.location.href).searchParams.get("v")
+      if (!videoId) {
+        throw new Error("Could not determine video ID")
+      }
 
-      // Store in Plasmo Storage with tab-scoped key
-      await storage.set(`videoContext_${tabId}`, videoContext)
+      // Check if video context already exists (cache check)
+      let videoContext = await storage.get<VideoContext>(`videoContext_${videoId}`)
+      
+      if (!videoContext) {
+        // Cache miss - extract fresh context
+        console.log("📥 Extracting fresh video context for", videoId)
+        videoContext = await extractYouTubeContext()
+        
+        // Cleanup before storing new video
+        await cleanupVideoStorage()
+        
+        // Store with videoId key (persistent)
+        await storage.set(`videoContext_${videoId}`, videoContext)
+      } else {
+        // Cache hit - instant!
+        console.log("✅ Using cached video context for", videoId)
+      }
 
-      // Set video for current tab to enable auto-closing panel on navigation
+      // Set video for tab (session storage mapping - already implemented)
       await sendToBackground({
         name: "setVideoForTab",
         body: { videoId: videoContext.videoId }

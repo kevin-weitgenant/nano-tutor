@@ -1,8 +1,7 @@
 import { env, pipeline } from "@huggingface/transformers";
+import { Storage } from "@plasmohq/storage";
 
-
-
-
+const sessionStorage = new Storage({ area: "session" })
 
 console.log(env, pipeline)
 
@@ -58,8 +57,7 @@ chrome.webNavigation.onHistoryStateUpdated.addListener(
   async (details) => {
     if (details.url.includes("/watch")) {
       const newVideoId = new URL(details.url).searchParams.get("v")
-      const data = await chrome.storage.session.get(details.tabId.toString())
-      const currentVideoId = data[details.tabId.toString()]
+      const currentVideoId = await sessionStorage.get(details.tabId.toString())
 
       if (currentVideoId && currentVideoId !== newVideoId) {
         // Video has changed, close the side panel by disabling and re-enabling
@@ -71,9 +69,8 @@ chrome.webNavigation.onHistoryStateUpdated.addListener(
           tabId: details.tabId,
           enabled: true
         })
-        await chrome.storage.session.remove(details.tabId.toString())
-        // Clear the tab-specific video context from local storage to avoid showing stale data
-        await chrome.storage.local.remove(`videoContext_${details.tabId}`)
+        await sessionStorage.remove(details.tabId.toString())
+        // Video context stays persistent (video-centric storage)
       }
     }
   },
@@ -81,9 +78,8 @@ chrome.webNavigation.onHistoryStateUpdated.addListener(
 )
 
 chrome.tabs.onRemoved.addListener((tabId) => {
-  chrome.storage.session.remove(tabId.toString())
-  // Clean up tab-specific video context
-  chrome.storage.local.remove(`videoContext_${tabId}`)
+  sessionStorage.remove(tabId.toString())
+  // Video context stays persistent (video-centric storage)
 })
 
 export {}

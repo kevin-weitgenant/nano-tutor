@@ -15,9 +15,9 @@ This extension uses multiple storage systems to manage different types of data e
 ### 2. **Chrome Local Storage** (`chrome.storage.local`)
 - **Storage Type**: Chrome extension's local storage
 - **What's Stored**:
-  - `videoContext_${tabId}` - Video metadata (title, transcript, channel, URL)
-  - `embeddingProgress-${videoId}` - Progress tracking during embedding generation
-- **Size Limit**: 10MB+ (much larger than sync storage)
+  - `videoContext_${videoId}` - Video metadata (title, transcript, channel, URL) - **video-centric, persistent**
+- **Size Limit**: 10MB+ (much larger than sync storage, ~100-200 videos)
+- **Lifecycle**: Persistent - cached indefinitely for instant access on revisit
 - **Path on Disk**: 
   ```
   C:\Users\{Username}\AppData\Local\Google\Chrome\User Data\Default\Extensions\{extension-id}\
@@ -26,7 +26,9 @@ This extension uses multiple storage systems to manage different types of data e
 
 ### 3. **Chrome Session Storage** (`chrome.storage.session`)
 - **Storage Type**: In-memory storage (RAM)
-- **What's Stored**: Current video ID per tab (mapping `tabId → videoId`)
+- **What's Stored**: 
+  - `${tabId}` → `videoId` - Mapping from tab to current video
+  - `embeddingProgress-${videoId}` - Temporary progress tracking during embedding generation
 - **Lifecycle**: Temporary - cleared when browser closes
 - **Persistent**: No (session only)
 
@@ -56,12 +58,26 @@ This extension uses multiple storage systems to manage different types of data e
 | Component | Storage Type | Location | What's Stored | Persistent? |
 |-----------|-------------|----------|---------------|-------------|
 | Embedding Model | Cache Storage API | Browser cache | ONNX model files | Yes |
-| Video Context & Progress | `chrome.storage.local` | Extension storage | Metadata, progress | Yes |
-| Tab-Video Mapping | `chrome.storage.session` | RAM | Current video per tab | No |
+| Video Context | `chrome.storage.local` | Extension storage | Video metadata (video-centric) | Yes |
+| Tab-Video Mapping & Progress | `chrome.storage.session` | RAM | Tab→Video mapping, embedding progress | No |
 | Embedded Chunks | IndexedDB (MeMemo) | Browser database | Text + 384D vectors | Yes |
 | Gemini Nano | Chrome-managed | Chrome internal | Language model | Yes |
 
 All storage is located within the user's local Chrome profile directory and managed by different browser APIs.
+
+### Video-Centric Storage Architecture
+
+The extension uses a **video-centric** storage model for optimal performance:
+
+- **Video contexts are stored once per video** (`videoContext_${videoId}`) and persist indefinitely
+- **Session storage maps tabs to videos** (`${tabId}` → `videoId`)
+- **Benefits**:
+  - Second tab with same video loads instantly (no transcript extraction)
+  - Revisiting a video weeks later is instant (persistent cache)
+  - Simple architecture with automatic cleanup
+- **Storage capacity**: Max 50 videos (~4MB of 10MB limit)
+- **Automatic cleanup**: When limit reached, removes oldest 10 videos (down to 40)
+- **Privacy**: All data is local-only, never synced (similar to browser history)
 
 ## Getting Started
 
