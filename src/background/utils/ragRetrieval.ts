@@ -2,13 +2,7 @@ import type { FeatureExtractionPipeline } from "@huggingface/transformers"
 import { querySimilarChunks } from "~utils/mememoStore"
 import { getChunks } from "~utils/chunkStore"
 import { RAG_CONFIG } from "~utils/constants"
-
-// Conservative token estimation: 1 token ≈ 3.5 characters for English text
-const CHARS_PER_TOKEN = 3.5
-
-function estimateTokens(text: string): number {
-  return Math.ceil(text.length / CHARS_PER_TOKEN)
-}
+import { estimateTokens, CHARS_PER_TOKEN } from "~utils/tokenEstimation"
 
 /**
  * Retrieves relevant transcript chunks based on semantic similarity to user query

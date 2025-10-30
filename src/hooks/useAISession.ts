@@ -4,6 +4,7 @@ import type { Message } from "../types/message"
 import type { VideoContext } from "../types/transcript"
 import { AI_CONFIG, buildSystemPrompt, ERROR_MESSAGES } from "../utils/constants"
 import { decideRAGStrategy } from "../utils/ragDecision"
+import { estimateTokens } from "../utils/tokenEstimation"
 
 interface UseAISessionProps {
   videoContext: VideoContext | null
@@ -110,11 +111,10 @@ export function useAISession({
       topK: AI_CONFIG.topK,
       initialPrompts: [{ role: "system", content: systemPrompt }]
     })
-    
-    try {
-      setSystemPromptTokens(await session.measureInputUsage(systemPrompt))
-    } catch { setSystemPromptTokens(0) }
-    
+
+    // Use fast estimation instead of async measurement to avoid race condition
+    setSystemPromptTokens(estimateTokens(systemPrompt))
+
     return session
   }
 

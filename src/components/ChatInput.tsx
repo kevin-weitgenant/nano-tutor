@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react"
 import type { TokenInfo } from "../hooks/useStreamingResponse"
 import type { LanguageModelSession } from "../types/chrome-ai"
+import type { EmbeddingProgress } from "../types/transcript"
+import { EmbeddingProgressBar } from "./EmbeddingProgressBar"
 
 interface ChatInputProps {
   inputText: string
@@ -11,6 +13,8 @@ interface ChatInputProps {
   tokenInfo: TokenInfo
   session: LanguageModelSession | null
   onReset: () => void
+  isEmbedding: boolean
+  embeddingProgress?: EmbeddingProgress
 }
 
 /**
@@ -25,7 +29,9 @@ export function ChatInput({
   apiAvailable,
   tokenInfo,
   session,
-  onReset
+  onReset,
+  isEmbedding,
+  embeddingProgress
 }: ChatInputProps) {
   const [inputTokenCount, setInputTokenCount] = useState<number | null>(null)
   const [measuringTokens, setMeasuringTokens] = useState(false)
@@ -65,6 +71,11 @@ export function ChatInput({
 
   return (
     <div className="border-t border-gray-200 bg-white p-4">
+      {/* Show embedding progress if embedding is in progress */}
+      {isEmbedding && embeddingProgress && (
+        <EmbeddingProgressBar progress={embeddingProgress} />
+      )}
+
       <div className="flex gap-2">
         <textarea
           value={inputText}
@@ -84,9 +95,9 @@ export function ChatInput({
           </button>
           <button
             onClick={onSend}
-            disabled={!inputText.trim() || isStreaming || !apiAvailable}
+            disabled={!inputText.trim() || isStreaming || !apiAvailable || !session || isEmbedding}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium text-sm">
-            {isStreaming ? "Thinking..." : "Send"}
+            {isEmbedding ? "Embedding..." : isStreaming ? "Thinking..." : "Send"}
           </button>
         </div>
       </div>

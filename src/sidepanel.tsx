@@ -27,6 +27,7 @@ import { ModelDownload } from "./components/ModelDownload";
 import { useAISession } from "./hooks/useAISession";
 import { useModelAvailability } from "./hooks/useModelAvailability";
 import { useStreamingResponse } from "./hooks/useStreamingResponse";
+import { useEmbeddingProgress } from "./hooks/useEmbeddingProgress";
 import { buildInitialBotMessage, RAG_CONFIG } from "./utils/constants";
 
 
@@ -66,12 +67,15 @@ function SidePanel() {
   })
 
   // Check model availability and handle downloads
-  const { 
-    availability, 
-    downloadProgress, 
-    isExtracting, 
-    startDownload 
+  const {
+    availability,
+    downloadProgress,
+    isExtracting,
+    startDownload
   } = useModelAvailability()
+
+  // Track embedding progress
+  const { isEmbedding, progress: embeddingProgress } = useEmbeddingProgress(videoId)
 
   const {
     session,
@@ -227,6 +231,8 @@ function SidePanel() {
           tokenInfo={tokenInfo}
           session={session}
           onReset={handleResetSession}
+          isEmbedding={isEmbedding}
+          embeddingProgress={embeddingProgress}
         />
       )}
     </div>
