@@ -39,7 +39,8 @@ export const RAG_CONFIG = {
   threshold: 0.80,        // Use RAG if transcript > 80% of context window
   chunkSize: 512,         // Fixed chunk size in characters
   chunkOverlap: 100,      // Overlap between chunks
-  retrievalCandidates: 12 // Initial candidate pool from vector search
+  retrievalCandidates: 12, // Initial candidate pool from vector search (legacy)
+  chunkBudgetFrac: 0.50   // Use 50% of available quota for chunks (leaving 50% as buffer)
 } as const
 
 export const ERROR_MESSAGES = {

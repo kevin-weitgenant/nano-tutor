@@ -17,13 +17,17 @@ import { useStorage } from "@plasmohq/storage/hook";
 
 
 
+import { sendToBackground } from "@plasmohq/messaging";
+
+import type { RequestBody as RAGRequestBody, ResponseBody as RAGResponseBody } from "~background/messages/retrieveRAG";
+
 import { ChatInput } from "./components/ChatInput";
 import { MessageList } from "./components/MessageList";
 import { ModelDownload } from "./components/ModelDownload";
 import { useAISession } from "./hooks/useAISession";
 import { useModelAvailability } from "./hooks/useModelAvailability";
 import { useStreamingResponse } from "./hooks/useStreamingResponse";
-import { buildInitialBotMessage } from "./utils/constants";
+import { buildInitialBotMessage, RAG_CONFIG } from "./utils/constants";
 
 
 /**
@@ -37,6 +41,7 @@ function SidePanel() {
   const [inputText, setInputText] = useState("")
   const [currentTabId, setCurrentTabId] = useState<number | null>(null)
   const [usingRAG, setUsingRAG] = useState(false)
+  const [ragContextLoaded, setRagContextLoaded] = useState(false)
 
   // Detect current tab ID
   useEffect(() => {
@@ -96,7 +101,67 @@ function SidePanel() {
  
 
   const handleSend = async () => {
-    await sendMessage(inputText)
+    if (!inputText.trim()) return
+
+    let messageToSend = inputText
+
+    // RAG retrieval: only on first message when using RAG mode
+    if (usingRAG && !ragContextLoaded && session && videoId) {
+      try {
+        console.log("🎯 First message in RAG mode - retrieving relevant chunks...")
+
+        const quota = session.inputQuota ?? 0
+        const userMsg = `User question: ${inputText}`
+
+        // Measure user message token cost
+        const userTokens = await session.measureInputUsage(userMsg)
+
+        // Calculate available tokens: quota - system - user
+        const available = quota - systemPromptTokens - userTokens
+
+        // Use 50% for chunks (leaving 50% as buffer for assistant + follow-ups)
+        const chunkBudget = Math.floor(available * RAG_CONFIG.chunkBudgetFrac)
+
+        console.log(`💰 Token Budget Breakdown:`)
+        console.log(`  Total Quota: ${quota}`)
+        console.log(`  System Prompt: ${systemPromptTokens}`)
+        console.log(`  User Message: ${userTokens}`)
+        console.log(`  Available: ${available}`)
+        console.log(`  Chunk Budget (50%): ${chunkBudget}`)
+        console.log(`  Buffer (50%): ${available - chunkBudget}`)
+
+        if (chunkBudget > 100) {
+          // Call background to retrieve chunks via message handler
+          const response = await sendToBackground<RAGRequestBody, RAGResponseBody>({
+            name: "retrieveRAG",
+            body: {
+              userQuery: inputText,
+              videoId: videoId,
+              tokenBudget: chunkBudget
+            }
+          })
+
+          if (response.context) {
+            messageToSend = `${response.context}\n\n${userMsg}`
+            console.log(`✅ Context injected into first message`)
+          } else {
+            messageToSend = userMsg
+            console.log(`⚠️ No context retrieved, sending user message only`)
+          }
+        } else {
+          messageToSend = userMsg
+          console.log(`⚠️ Chunk budget too small (${chunkBudget} tokens), skipping RAG`)
+        }
+
+        setRagContextLoaded(true)
+      } catch (error) {
+        console.error("❌ RAG retrieval failed:", error)
+        messageToSend = `User question: ${inputText}`
+        setRagContextLoaded(true)
+      }
+    }
+
+    await sendMessage(messageToSend)
     setInputText("")
   }
 
@@ -104,6 +169,7 @@ function SidePanel() {
   const handleResetSession = async () => {
     await resetSession()
     resetTokenInfo()
+    setRagContextLoaded(false) // Reset RAG flag to allow retrieval on next first message
     setMessages([
       {
         id: Date.now(),

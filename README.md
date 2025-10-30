@@ -32,10 +32,17 @@ This extension uses multiple storage systems to manage different types of data e
 - **Lifecycle**: Temporary - cleared when browser closes
 - **Persistent**: No (session only)
 
-### 4. **IndexedDB via MeMemo**
+### 4. **IndexedDB for Vector Storage**
 - **Storage Type**: Browser's IndexedDB (persistent database)
-- **What's Stored**: `TranscriptChunk[]` - Text chunks with their 384-dimensional embedding vectors
-- **Details**: Each chunk contains both the text and its corresponding embedding vector together
+- **What's Stored**:
+  - **Chunk Store** (`transcript-chunks`): Full `TranscriptChunk[]` objects with text and metadata
+  - **Vector Index** (HNSW): 384-dimensional embedding vectors for similarity search
+- **Chunking Strategy**:
+  - Chunk size: 512 characters
+  - Overlap: 100 characters (ensures context continuity)
+  - Format: `{videoId}-chunk-{index}` (e.g., `abc123xyz-chunk-7`)
+- **Vector Search**: HNSW (Hierarchical Navigable Small World) index for fast semantic similarity queries
+- **Details**: Each chunk contains the text, chunk index, video ID, and its 384-dim embedding vector
 - **Path on Disk**:
   ```
   C:\Users\{Username}\AppData\Local\Google\Chrome\User Data\Default\IndexedDB\chrome-extension_{extension-id}_0.indexeddb.leveldb\
@@ -60,7 +67,7 @@ This extension uses multiple storage systems to manage different types of data e
 | Embedding Model | Cache Storage API | Browser cache | ONNX model files | Yes |
 | Video Context | `chrome.storage.local` | Extension storage | Video metadata (video-centric) | Yes |
 | Tab-Video Mapping & Progress | `chrome.storage.session` | RAM | Tab→Video mapping, embedding progress | No |
-| Embedded Chunks | IndexedDB (MeMemo) | Browser database | Text + 384D vectors | Yes |
+| Chunked Transcripts | IndexedDB | Browser database | 512-char chunks + 384D vectors (HNSW index) | Yes |
 | Gemini Nano | Chrome-managed | Chrome internal | Language model | Yes |
 
 All storage is located within the user's local Chrome profile directory and managed by different browser APIs.
@@ -78,6 +85,66 @@ The extension uses a **video-centric** storage model for optimal performance:
 - **Storage capacity**: Max 50 videos (~4MB of 10MB limit)
 - **Automatic cleanup**: When limit reached, removes oldest 10 videos (down to 40)
 - **Privacy**: All data is local-only, never synced (similar to browser history)
+
+## RAG Strategy
+
+The extension intelligently decides between two modes when handling video transcripts:
+
+### RAG Decision Logic
+
+**When transcripts are evaluated:**
+- At session initialization, the extension compares transcript size against the model's context window
+- **Threshold**: 80% of the model's input quota (configurable via `RAG_CONFIG.threshold`)
+
+**Two modes:**
+
+1. **Full Transcript Mode** (transcript ≤ 80% of quota)
+   - Entire transcript included directly in the system prompt
+   - No chunking or embedding needed
+   - Fast, simple, direct access to all content
+   - Best for short videos (<10 minutes typically)
+
+2. **RAG Mode** (transcript > 80% of quota)
+   - Transcript is chunked (512 chars with 100 char overlap)
+   - Each chunk embedded into 384-dimensional vectors
+   - Vectors stored in HNSW index for fast similarity search
+   - Only relevant chunks retrieved at query time
+
+### RAG Retrieval Strategy (First Message Only)
+
+When RAG mode is active, retrieval happens **only on the first user message**:
+
+**Budget Calculation:**
+```
+Available Tokens = Model Quota - System Prompt - User Message
+Chunk Budget = Available Tokens × 50%
+Buffer (for assistant + follow-ups) = Available Tokens × 50%
+```
+
+**Retrieval Process:**
+1. Calculate how many 512-char chunks fit in the chunk budget
+2. Embed user query into 384-dim vector
+3. Query HNSW index for top-K most similar chunks (K = calculated chunk count)
+4. Retrieve full chunk text from IndexedDB
+5. Inject chunks into first message: `{chunks}\n\nUser question: {query}`
+6. Send augmented message to model
+
+**Subsequent messages:**
+- Skip RAG retrieval (chunks already in context from Turn 1)
+- Send user message directly
+- Relies on established context for follow-up questions
+
+**Why 50%?**
+- Simple, naive strategy that works well across different model quotas
+- Leaves ample buffer for assistant responses and follow-up conversation
+- Scales automatically: 4K quota → ~13 chunks, 128K quota → ~460 chunks
+- No need to predict assistant response length or future turns
+
+**Key Characteristics:**
+- Single retrieval per session (first message only)
+- Budget-aware: adapts chunk count to available quota
+- Fast: character-based token estimation (no API calls per chunk)
+- Predictable: same inputs always retrieve same chunk count
 
 ## Getting Started
 
