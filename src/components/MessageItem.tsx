@@ -1,4 +1,6 @@
 import type { Message } from "../types/message"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 
 interface MessageItemProps {
   message: Message
@@ -18,9 +20,13 @@ export function MessageItem({ message }: MessageItemProps) {
             ? "bg-blue-600 text-white"
             : "bg-white text-gray-800 border border-gray-200"
         }`}>
-        <p className="text-sm whitespace-pre-wrap break-words">
-          {message.text}
-        </p>
+        <div className="text-sm prose prose-sm max-w-none prose-invert:text-white">
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            disallowedElements={["script", "iframe", "object", "embed"]}>
+            {message.text}
+          </ReactMarkdown>
+        </div>
       </div>
     </div>
   )

@@ -38,6 +38,8 @@ export function useStreamingResponse(
   })
   const streamingMessageRef = useRef<string>("")
   const streamingMessageIdRef = useRef<number | null>(null)
+  const lastUpdateTimeRef = useRef<number>(0)
+  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Initialize token info when session is ready
   useEffect(() => {
@@ -55,6 +57,72 @@ export function useStreamingResponse(
       })
     }
   }, [session, systemPromptTokens])
+
+  // Cleanup throttle timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  // Throttled update function to limit re-renders during streaming
+  // Updates at most every 16ms (60 FPS) for optimal performance
+  const updateStreamingMessage = (forceUpdate: boolean = false) => {
+    const now = Date.now()
+    const timeSinceLastUpdate = now - lastUpdateTimeRef.current
+    const THROTTLE_MS = 16 // 60 FPS
+
+    const performUpdate = () => {
+      setMessages((prev) => {
+        const lastMessage = prev[prev.length - 1]
+
+        // If we're updating the current streaming message
+        if (
+          streamingMessageIdRef.current &&
+          lastMessage?.id === streamingMessageIdRef.current
+        ) {
+          return [
+            ...prev.slice(0, -1),
+            {
+              ...lastMessage,
+              text: streamingMessageRef.current
+            }
+          ]
+        }
+
+        // Create new bot message
+        const newBotMessage: Message = {
+          id: Date.now(),
+          text: streamingMessageRef.current,
+          sender: "bot"
+        }
+        streamingMessageIdRef.current = newBotMessage.id
+
+        return [...prev, newBotMessage]
+      })
+      lastUpdateTimeRef.current = Date.now()
+    }
+
+    // Clear any pending timeout
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current)
+      updateTimeoutRef.current = null
+    }
+
+    // Force immediate update or check throttle window
+    if (forceUpdate || timeSinceLastUpdate >= THROTTLE_MS) {
+      performUpdate()
+    } else {
+      // Schedule update for next throttle window
+      const delay = THROTTLE_MS - timeSinceLastUpdate
+      updateTimeoutRef.current = setTimeout(() => {
+        performUpdate()
+        updateTimeoutRef.current = null
+      }, delay)
+    }
+  }
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || isStreaming || !session) return
@@ -86,35 +154,12 @@ export function useStreamingResponse(
         streamingMessageRef.current += newChunk
         previousContent = chunk
 
-        // Update or create bot message
-        setMessages((prev) => {
-          const lastMessage = prev[prev.length - 1]
-
-          // If we're updating the current streaming message
-          if (
-            streamingMessageIdRef.current &&
-            lastMessage?.id === streamingMessageIdRef.current
-          ) {
-            return [
-              ...prev.slice(0, -1),
-              {
-                ...lastMessage,
-                text: streamingMessageRef.current
-              }
-            ]
-          }
-
-          // Create new bot message
-          const newBotMessage: Message = {
-            id: Date.now(),
-            text: streamingMessageRef.current,
-            sender: "bot"
-          }
-          streamingMessageIdRef.current = newBotMessage.id
-
-          return [...prev, newBotMessage]
-        })
+        // Update with throttling (max 60 FPS)
+        updateStreamingMessage()
       }
+
+      // Force final update to ensure last chunk is displayed
+      updateStreamingMessage(true)
     } catch (error) {
       console.error("Error during streaming:", error)
       const errorMessage: Message = {
@@ -124,6 +169,12 @@ export function useStreamingResponse(
       }
       setMessages((prev) => [...prev, errorMessage])
     } finally {
+      // Clear any pending throttle timeout
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current)
+        updateTimeoutRef.current = null
+      }
+
       // Reset streaming state
       setIsStreaming(false)
       streamingMessageRef.current = ""
