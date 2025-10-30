@@ -15,15 +15,17 @@ const CHUNK_CONFIG = {
  *
  * @param transcript - Full video transcript text (clean, no timestamps)
  * @param videoId - YouTube video ID
+ * @param chunkSize - Dynamic chunk size based on model context window
  * @returns Array of transcript chunks
  */
 export async function chunkTranscript(
   transcript: string,
-  videoId: string
+  videoId: string,
+  chunkSize: number
 ): Promise<TranscriptChunk[]> {
-  // Initialize text splitter
+  // Initialize text splitter with dynamic chunk size
   const splitter = new RecursiveCharacterTextSplitter({
-    chunkSize: CHUNK_CONFIG.chunkSize,
+    chunkSize,
     chunkOverlap: CHUNK_CONFIG.chunkOverlap,
     separators: CHUNK_CONFIG.separators,
     lengthFunction: (text: string) => text.length

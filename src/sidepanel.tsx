@@ -36,6 +36,7 @@ function SidePanel() {
   const [messages, setMessages] = useState<Message[]>([])
   const [inputText, setInputText] = useState("")
   const [currentTabId, setCurrentTabId] = useState<number | null>(null)
+  const [usingRAG, setUsingRAG] = useState(false)
 
   // Detect current tab ID
   useEffect(() => {
@@ -67,7 +68,8 @@ function SidePanel() {
     systemPromptTokens
   } = useAISession({ 
     videoContext, 
-    shouldInitialize: availability === 'available'
+    shouldInitialize: availability === 'available',
+    setUsingRAG
   })
   
   // Handle message streaming

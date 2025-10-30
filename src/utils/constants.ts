@@ -37,6 +37,11 @@ export const AI_CONFIG = {
   topK: 3
 } as const
 
+export const RAG_CONFIG = {
+  threshold: 0.80, // Use RAG if transcript > 80% of context window
+  chunkContextRatio: 0.75 // Use 75% of effective context for chunks
+} as const
+
 export const ERROR_MESSAGES = {
   API_NOT_AVAILABLE:
     "⚠️ Prompt API not available. Please ensure you're using Chrome 138+ or enable Chrome AI in chrome://flags/#optimization-guide-on-device-model and restart Chrome.",

@@ -1,16 +1,14 @@
-import { useEffect, useState } from "react";
-
-
-
-import type { LanguageModelSession } from "../types/chrome-ai";
-import type { Message } from "../types/message";
-import type { VideoContext } from "../types/transcript";
-import { AI_CONFIG, buildSystemPrompt, ERROR_MESSAGES } from "../utils/constants";
-
+import { useEffect, useState } from "react"
+import type { LanguageModelSession } from "../types/chrome-ai"
+import type { Message } from "../types/message"
+import type { VideoContext } from "../types/transcript"
+import { AI_CONFIG, buildSystemPrompt, ERROR_MESSAGES } from "../utils/constants"
+import { decideRAGStrategy } from "../utils/ragDecision"
 
 interface UseAISessionProps {
   videoContext: VideoContext | null
   shouldInitialize: boolean
+  setUsingRAG: (using: boolean) => void
 }
 
 interface UseAISessionReturn {
@@ -28,7 +26,8 @@ interface UseAISessionReturn {
  */
 export function useAISession({
   videoContext,
-  shouldInitialize
+  shouldInitialize,
+  setUsingRAG
 }: UseAISessionProps): UseAISessionReturn {
   const [session, setSession] = useState<LanguageModelSession | null>(null)
   const [apiAvailable, setApiAvailable] = useState<boolean | null>(null)
@@ -85,36 +84,38 @@ export function useAISession({
   const createSession = async (
     context?: VideoContext
   ): Promise<LanguageModelSession | null> => {
-    if (!("LanguageModel" in self)) {
-      return null
-    }
+    if (!("LanguageModel" in self)) return null
 
     const languageModel = self.LanguageModel!
-
-    // Build system prompt based on video context
-    const systemPrompt = buildSystemPrompt(context)
-
-    const newSession = await languageModel.create({
+    let systemPrompt: string
+    
+    // Decide strategy based on context
+    if (!context) {
+      systemPrompt = buildSystemPrompt()
+      setUsingRAG(false)
+    } else {
+      const { systemPrompt: ragPrompt, shouldUseRAG } = await decideRAGStrategy(
+        context,
+        languageModel
+      )
+      systemPrompt = ragPrompt
+      setUsingRAG(shouldUseRAG)
+    }
+    
+    console.log(`💬 System Prompt (${systemPrompt.length} chars):`, systemPrompt.substring(0, 150) + '...')
+    
+    // Create session with determined system prompt
+    const session = await languageModel.create({
       temperature: AI_CONFIG.temperature,
       topK: AI_CONFIG.topK,
-      initialPrompts: [
-        {
-          role: "system",
-          content: systemPrompt
-        }
-      ]
+      initialPrompts: [{ role: "system", content: systemPrompt }]
     })
-
-    // Measure system prompt tokens
+    
     try {
-      const tokens = await newSession.measureInputUsage(systemPrompt)
-      setSystemPromptTokens(tokens)
-    } catch (error) {
-      console.error("Failed to measure system prompt tokens:", error)
-      setSystemPromptTokens(0)
-    }
-
-    return newSession
+      setSystemPromptTokens(await session.measureInputUsage(systemPrompt))
+    } catch { setSystemPromptTokens(0) }
+    
+    return session
   }
 
   // Reset session function - destroys current session and creates a new one

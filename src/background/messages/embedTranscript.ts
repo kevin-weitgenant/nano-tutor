@@ -3,11 +3,14 @@ import { Storage } from "@plasmohq/storage"
 import { getEmbedder } from "~background"
 import { chunkTranscript } from "~utils/textChunking"
 import { extractVideoId } from "~utils/youtubeTranscript"
+import { saveEmbeddings } from "~utils/mememoStore"
 import type { TranscriptChunk, EmbeddingProgress } from "~types/transcript"
 
 export type RequestBody = {
   transcript: string
   url: string
+  chunkSize: number
+  videoTitle: string
 }
 
 export type ResponseBody = {
@@ -21,10 +24,11 @@ const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async
   const startTime = performance.now()
 
   try {
-    const { transcript, url } = req.body
+    const { transcript, url, chunkSize, videoTitle } = req.body
 
     console.log("🔄 Starting chunking and embedding process...")
     console.log(`📝 Transcript length: ${transcript.length} characters`)
+    console.log(`📏 Chunk size: ${chunkSize}`)
 
     // Extract video ID
     const videoId = extractVideoId(url)
@@ -36,7 +40,7 @@ const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async
 
     // Step 1: Chunk the transcript
     const chunkingStart = performance.now()
-    const chunks = await chunkTranscript(transcript, videoId)
+    const chunks = await chunkTranscript(transcript, videoId, chunkSize)
     const chunkingTime = performance.now() - chunkingStart
     console.log(
       `✂️  Chunked into ${chunks.length} chunks in ${chunkingTime.toFixed(2)}ms`
@@ -99,6 +103,12 @@ const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async
     }
 
     const embeddingTime = performance.now() - embeddingStart
+    
+    // Step 5: Save embeddings to MeMemo
+    console.log("💾 Saving embeddings to MeMemo...")
+    await saveEmbeddings(embeddedChunks, videoId, chunkSize)
+    console.log("✅ Embeddings saved to MeMemo")
+    
     const totalTime = performance.now() - startTime
 
     // Log summary
