@@ -23,14 +23,10 @@ export async function decideRAGStrategy(
     
     const ragSystemPrompt = `You are an assistant that answers questions about the video: ${context.title}. You will receive the question of the user and some relevant chunks of the transcript. Make use of them and write the best reply.`
     
-    const reservedTokens = await tempSession.measureInputUsage(ragSystemPrompt)
-    const effectiveContext = inputQuota - reservedTokens
-    const dynamicChunkSize = Math.floor(effectiveContext * RAG_CONFIG.chunkContextRatio)
-    
-    // Check if embeddings exist for this chunk size
+    // Check if embeddings exist for this video
     const { exists } = await sendToBackground({
       name: "checkEmbeddings",
-      body: { videoId: context.videoId, chunkSize: dynamicChunkSize }
+      body: { videoId: context.videoId }
     })
     
     // Generate embeddings if they don't exist
@@ -40,7 +36,6 @@ export async function decideRAGStrategy(
         body: {
           transcript: context.transcript,
           url: context.url,
-          chunkSize: dynamicChunkSize,
           videoTitle: context.title
         }
       })

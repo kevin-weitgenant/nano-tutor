@@ -1,33 +1,23 @@
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters"
 import type { TranscriptChunk } from "~types/transcript"
-
-/**
- * Configuration for text chunking
- */
-const CHUNK_CONFIG = {
-  chunkSize: 512, // Target characters per chunk
-  chunkOverlap: 100, // Overlap between chunks for context continuity
-  separators: ["\n\n", "\n", ". ", " ", ""] // Prefer splitting on paragraph/sentence boundaries
-}
+import { RAG_CONFIG } from "./constants"
 
 /**
  * Chunks a transcript into overlapping segments suitable for embedding
  *
  * @param transcript - Full video transcript text (clean, no timestamps)
  * @param videoId - YouTube video ID
- * @param chunkSize - Dynamic chunk size based on model context window
  * @returns Array of transcript chunks
  */
 export async function chunkTranscript(
   transcript: string,
-  videoId: string,
-  chunkSize: number
+  videoId: string
 ): Promise<TranscriptChunk[]> {
-  // Initialize text splitter with dynamic chunk size
+  // Initialize text splitter with fixed chunk size
   const splitter = new RecursiveCharacterTextSplitter({
-    chunkSize,
-    chunkOverlap: CHUNK_CONFIG.chunkOverlap,
-    separators: CHUNK_CONFIG.separators,
+    chunkSize: RAG_CONFIG.chunkSize,
+    chunkOverlap: RAG_CONFIG.chunkOverlap,
+    separators: ["\n\n", "\n", ". ", " ", ""],
     lengthFunction: (text: string) => text.length
   })
 

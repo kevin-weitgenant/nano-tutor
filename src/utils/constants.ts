@@ -16,8 +16,6 @@ export function buildSystemPrompt(context?: VideoContext): string {
 You are currently helping the user understand and discuss the following YouTube video:
 
 **Video Title:** ${context.title}
-**Channel:** ${context.channel}
-**Video URL:** ${context.url}
 
 **Full Transcript:**
 ${context.transcript}
@@ -29,7 +27,7 @@ Your role is to:
 - Reference specific parts of the transcript when relevant
 - Be conversational and helpful
 
-Always base your responses on the provided transcript. If the user asks about something not covered in the transcript, politely let them know it wasn't discussed in this video.`
+Always base your responses on the provided transcript.`
 }
 
 export const AI_CONFIG = {
@@ -38,8 +36,10 @@ export const AI_CONFIG = {
 } as const
 
 export const RAG_CONFIG = {
-  threshold: 0.80, // Use RAG if transcript > 80% of context window
-  chunkContextRatio: 0.75 // Use 75% of effective context for chunks
+  threshold: 0.80,        // Use RAG if transcript > 80% of context window
+  chunkSize: 512,         // Fixed chunk size in characters
+  chunkOverlap: 100,      // Overlap between chunks
+  retrievalCandidates: 12 // Initial candidate pool from vector search
 } as const
 
 export const ERROR_MESSAGES = {

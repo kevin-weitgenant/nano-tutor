@@ -24,8 +24,7 @@ const getHNSWIndex = (): HNSW => {
  * We store chunk keys as: {videoId}-chunk-{index}
  */
 export async function checkEmbeddingsExist(
-  videoId: string,
-  chunkSize: number
+  videoId: string
 ): Promise<boolean> {
   const index = getHNSWIndex()
   
@@ -45,8 +44,7 @@ export async function checkEmbeddingsExist(
  */
 export async function saveEmbeddings(
   chunks: TranscriptChunk[],
-  videoId: string,
-  chunkSize: number
+  videoId: string
 ): Promise<void> {
   const index = getHNSWIndex()
   

@@ -3,7 +3,6 @@ import { checkEmbeddingsExist } from "~utils/mememoStore"
 
 export type RequestBody = {
   videoId: string
-  chunkSize: number
 }
 
 export type ResponseBody = {
@@ -11,8 +10,8 @@ export type ResponseBody = {
 }
 
 const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async (req, res) => {
-  const { videoId, chunkSize } = req.body
-  const exists = await checkEmbeddingsExist(videoId, chunkSize)
+  const { videoId } = req.body
+  const exists = await checkEmbeddingsExist(videoId)
   
   res.send({ exists })
 }

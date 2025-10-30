@@ -4,12 +4,12 @@ import { getEmbedder } from "~background"
 import { chunkTranscript } from "~utils/textChunking"
 import { extractVideoId } from "~utils/youtubeTranscript"
 import { saveEmbeddings } from "~utils/mememoStore"
+import { saveChunks } from "~utils/chunkStore"
 import type { TranscriptChunk, EmbeddingProgress } from "~types/transcript"
 
 export type RequestBody = {
   transcript: string
   url: string
-  chunkSize: number
   videoTitle: string
 }
 
@@ -24,11 +24,10 @@ const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async
   const startTime = performance.now()
 
   try {
-    const { transcript, url, chunkSize, videoTitle } = req.body
+    const { transcript, url, videoTitle } = req.body
 
     console.log("🔄 Starting chunking and embedding process...")
     console.log(`📝 Transcript length: ${transcript.length} characters`)
-    console.log(`📏 Chunk size: ${chunkSize}`)
 
     // Extract video ID
     const videoId = extractVideoId(url)
@@ -40,7 +39,7 @@ const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async
 
     // Step 1: Chunk the transcript
     const chunkingStart = performance.now()
-    const chunks = await chunkTranscript(transcript, videoId, chunkSize)
+    const chunks = await chunkTranscript(transcript, videoId)
     const chunkingTime = performance.now() - chunkingStart
     console.log(
       `✂️  Chunked into ${chunks.length} chunks in ${chunkingTime.toFixed(2)}ms`
@@ -106,8 +105,13 @@ const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async
     
     // Step 5: Save embeddings to MeMemo
     console.log("💾 Saving embeddings to MeMemo...")
-    await saveEmbeddings(embeddedChunks, videoId, chunkSize)
+    await saveEmbeddings(embeddedChunks, videoId)
     console.log("✅ Embeddings saved to MeMemo")
+    
+    // Step 6: Save chunks to IndexedDB
+    console.log("💾 Saving chunks to IndexedDB...")
+    await saveChunks(embeddedChunks, videoId)
+    console.log("✅ Chunks saved to IndexedDB")
     
     const totalTime = performance.now() - startTime
 
