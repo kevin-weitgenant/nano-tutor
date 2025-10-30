@@ -19,7 +19,7 @@ export async function cleanupVideoStorage(): Promise<void> {
   const MAX_VIDEOS = 50
   const REMOVE_COUNT = 10
 
-  const allStorage = await chrome.storage.local.get(null)
+  const allStorage = (await chrome.storage.local.get(null)) as unknown as { [key: string]: any }
   const videoContextKeys = Object.keys(allStorage)
     .filter(key => key.startsWith('videoContext_'))
   
