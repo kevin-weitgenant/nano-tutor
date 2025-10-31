@@ -1,6 +1,8 @@
 import { sendToBackground } from "@plasmohq/messaging"
+import type { LanguageModelSession } from "~types/chrome-ai"
 import type { VideoContext } from "~types/transcript"
 import { RAG_CONFIG } from "./constants"
+import { estimateTokens } from "./tokenEstimation"
 
 interface RAGDecisionResult {
   systemPrompt: string
@@ -9,12 +11,11 @@ interface RAGDecisionResult {
 
 export async function decideRAGStrategy(
   context: VideoContext,
-  languageModel: any
+  session: LanguageModelSession
 ): Promise<RAGDecisionResult> {
-  // If session.inputQuota proves slow, we can optimize this later
-  const tempSession = await languageModel.create()
-  const inputQuota = tempSession.inputQuota
-  const transcriptTokens = await tempSession.measureInputUsage(context.transcript)
+  // Use existing session to get inputQuota - no temp session needed!
+  const inputQuota = session.inputQuota
+  const transcriptTokens = estimateTokens(context.transcript)
   const ragThreshold = Math.floor(inputQuota * RAG_CONFIG.threshold)
 
   if (transcriptTokens > ragThreshold) {
@@ -45,15 +46,23 @@ export async function decideRAGStrategy(
       console.log("Embeddings already exist for this videoid and chunk size")
     }
     
+    // Append system prompt to the session
+    await session.append([
+      { role: 'system', content: ragSystemPrompt }
+    ])
     
-    tempSession.destroy()
     return { systemPrompt: ragSystemPrompt, shouldUseRAG: true }
   } else {
     // === FULL TRANSCRIPT MODE ===
     console.log(`📄 RAG Decision: Using full transcript mode (transcript: ${transcriptTokens} tokens <= threshold: ${ragThreshold} tokens)`)
     
     const fullTranscriptPrompt = `You are an assistant that answers questions about the video: ${context.title}. Here is the full transcript:\n\n${context.transcript}`
-    tempSession.destroy()
+    
+    // Append system prompt to the session
+    await session.append([
+      { role: 'system', content: fullTranscriptPrompt }
+    ])
+    
     return { systemPrompt: fullTranscriptPrompt, shouldUseRAG: false }
   }
 }

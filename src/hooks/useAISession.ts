@@ -4,7 +4,6 @@ import type { Message } from "../types/message"
 import type { VideoContext } from "../types/transcript"
 import { AI_CONFIG, buildSystemPrompt, ERROR_MESSAGES } from "../utils/constants"
 import { decideRAGStrategy } from "../utils/ragDecision"
-import { estimateTokens } from "../utils/tokenEstimation"
 
 interface UseAISessionProps {
   videoContext: VideoContext | null
@@ -17,7 +16,7 @@ interface UseAISessionReturn {
   apiAvailable: boolean | null
   initializationMessages: Message[]
   resetSession: () => Promise<void>
-  systemPromptTokens: number
+  systemTokens: number
 }
 
 /**
@@ -35,12 +34,12 @@ export function useAISession({
   const [initializationMessages, setInitializationMessages] = useState<
     Message[]
   >([])
-  const [systemPromptTokens, setSystemPromptTokens] = useState<number>(0)
+  const [systemTokens, setSystemTokens] = useState<number>(0)
 
   useEffect(() => {
     const initializeSession = async () => {
-      // Don't initialize if we shouldn't yet (e.g., model not available)
-      if (!shouldInitialize) {
+      // Don't initialize until we have video context AND model is available
+      if (!shouldInitialize || !videoContext) {
         return
       }
 
@@ -88,32 +87,51 @@ export function useAISession({
     if (!("LanguageModel" in self)) return null
 
     const languageModel = self.LanguageModel!
+    
+    // Create empty session first (no initialPrompts - will be added via append())
+    const session = await languageModel.create({
+      temperature: AI_CONFIG.temperature,
+      topK: AI_CONFIG.topK
+      // NO initialPrompts - system prompt will be appended by decideRAGStrategy
+    })
+    
     let systemPrompt: string
     
-    // Decide strategy based on context
+    // Decide strategy based on context and append system prompt
     if (!context) {
       systemPrompt = buildSystemPrompt()
+      // Append system prompt to empty session
+      await session.append([{ role: "system", content: systemPrompt }])
       setUsingRAG(false)
     } else {
+      // decideRAGStrategy will append the system prompt internally
       const { systemPrompt: ragPrompt, shouldUseRAG } = await decideRAGStrategy(
         context,
-        languageModel
+        session
       )
       systemPrompt = ragPrompt
       setUsingRAG(shouldUseRAG)
     }
     
     console.log(`💬 System Prompt (${systemPrompt.length} chars):`, systemPrompt.substring(0, 150) + '...')
-    
-    // Create session with determined system prompt
-    const session = await languageModel.create({
-      temperature: AI_CONFIG.temperature,
-      topK: AI_CONFIG.topK,
-      initialPrompts: [{ role: "system", content: systemPrompt }]
-    })
 
-    // Use fast estimation instead of async measurement to avoid race condition
-    setSystemPromptTokens(estimateTokens(systemPrompt))
+    // Measure system prompt tokens
+    let systemTokenCount = 0
+    try {
+      systemTokenCount = await session.measureInputUsage(systemPrompt)
+      setSystemTokens(systemTokenCount)
+      
+      console.log('🔧 [SESSION CREATED - TOKEN BREAKDOWN]')
+      console.log('  System prompt length:', systemPrompt.length, 'chars')
+      console.log('  System prompt tokens:', systemTokenCount)
+      console.log('  session.inputUsage:', session.inputUsage ?? 'undefined')
+      console.log('  session.inputQuota:', session.inputQuota ?? 'undefined')
+      console.log('  System % of quota:', 
+        ((systemTokenCount / (session.inputQuota || 1)) * 100).toFixed(2) + '%')
+      console.log('---')
+    } catch (error) {
+      console.error('Failed to measure system tokens:', error)
+    }
 
     return session
   }
@@ -127,6 +145,7 @@ export function useAISession({
       }
 
       // Create new session with current video context
+      // (systemTokens will be remeasured automatically in createSession)
       const newSession = await createSession(videoContext)
       setSession(newSession)
     } catch (error) {
@@ -145,6 +164,6 @@ export function useAISession({
     apiAvailable,
     initializationMessages,
     resetSession,
-    systemPromptTokens
+    systemTokens
   }
 }

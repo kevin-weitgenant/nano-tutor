@@ -4,18 +4,19 @@ import type { Message } from "../types/message"
 import { ERROR_MESSAGES } from "../utils/constants"
 
 export interface TokenInfo {
-  inputUsage: number         // Tokens used so far (user messages only)
-  tokensLeft: number         // Tokens remaining (calculated)
+  systemTokens: number       // System message tokens
+  conversationTokens: number // User + assistant tokens
+  totalTokens: number        // System + conversation
   inputQuota: number         // Total token quota
-  systemPromptTokens: number // Tokens used by system prompt (transcript)
-  totalUsage: number         // Total tokens used (system + user messages)
+  percentageUsed: number     // 0-100%
 }
 
 interface UseStreamingResponseReturn {
   isStreaming: boolean
-  sendMessage: (text: string) => Promise<void>
+  sendMessage: (text: string, options?: { displayText?: string; chunks?: import("../types/transcript").TranscriptChunk[] }) => Promise<void>
   tokenInfo: TokenInfo
   resetTokenInfo: () => void
+  stopStreaming: () => void
 }
 
 /**
@@ -26,37 +27,47 @@ export function useStreamingResponse(
   session: LanguageModelSession | null,
   messages: Message[],
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>,
-  systemPromptTokens: number = 0
+  systemTokens: number
 ): UseStreamingResponseReturn {
   const [isStreaming, setIsStreaming] = useState(false)
   const [tokenInfo, setTokenInfo] = useState<TokenInfo>({
-    inputUsage: 0,
-    tokensLeft: 0,
+    systemTokens: 0,
+    conversationTokens: 0,
+    totalTokens: 0,
     inputQuota: 0,
-    systemPromptTokens: 0,
-    totalUsage: 0
+    percentageUsed: 0
   })
   const streamingMessageRef = useRef<string>("")
   const streamingMessageIdRef = useRef<number | null>(null)
   const lastUpdateTimeRef = useRef<number>(0)
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   // Initialize token info when session is ready
   useEffect(() => {
     if (session?.inputUsage !== undefined && session?.inputQuota !== undefined) {
-      const usage = session.inputUsage ?? 0
+      const conversationTokens = session.inputUsage ?? 0
       const quota = session.inputQuota ?? 0
-      const totalUsage = usage + systemPromptTokens
+      const totalTokens = systemTokens + conversationTokens
+      const percentageUsed = quota > 0 ? (totalTokens / quota) * 100 : 0
+
+      console.log('📊 [TOKEN TRACKING - Initial Load]')
+      console.log('  System tokens:', systemTokens)
+      console.log('  Conversation tokens (session.inputUsage):', conversationTokens)
+      console.log('  Total tokens:', totalTokens)
+      console.log('  Input quota:', quota)
+      console.log('  Percentage used:', percentageUsed.toFixed(2) + '%')
+      console.log('---')
 
       setTokenInfo({
-        inputUsage: usage,
-        tokensLeft: quota - totalUsage,
+        systemTokens,
+        conversationTokens,
+        totalTokens,
         inputQuota: quota,
-        systemPromptTokens: systemPromptTokens,
-        totalUsage: totalUsage
+        percentageUsed
       })
     }
-  }, [session, systemPromptTokens])
+  }, [session, systemTokens])
 
   // Cleanup throttle timeout on unmount
   useEffect(() => {
@@ -124,25 +135,36 @@ export function useStreamingResponse(
     }
   }
 
-  const sendMessage = async (text: string) => {
+  const sendMessage = async (text: string, options?: { displayText?: string; chunks?: import("../types/transcript").TranscriptChunk[] }) => {
     if (!text.trim() || isStreaming || !session) return
 
+    // Log token state BEFORE sending message
+    console.log('📤 [BEFORE SENDING MESSAGE]')
+    console.log('  session.inputUsage: ' + (session.inputUsage ?? 'undefined'))
+    console.log('  session.inputQuota: ' + (session.inputQuota ?? 'undefined'))
+    console.log('---')
+
     // Add user message
+    // Use displayText if provided (for RAG, to show only user query not full context)
     const userMessage: Message = {
       id: Date.now(),
-      text: text,
-      sender: "user"
+      text: options?.displayText ?? text,
+      sender: "user",
+      retrievedChunks: options?.chunks
     }
 
     setMessages((prev) => [...prev, userMessage])
 
-    // Set streaming state
+    // Set streaming state and create abort controller
     setIsStreaming(true)
     streamingMessageRef.current = ""
+    abortControllerRef.current = new AbortController()
 
     try {
-      // Stream the response
-      const stream = await session.promptStreaming(text)
+      // Stream the response with abort signal
+      const stream = await session.promptStreaming(text, {
+        signal: abortControllerRef.current.signal
+      })
       let previousContent = ""
 
       for await (const chunk of stream) {
@@ -161,13 +183,20 @@ export function useStreamingResponse(
       // Force final update to ensure last chunk is displayed
       updateStreamingMessage(true)
     } catch (error) {
-      console.error("Error during streaming:", error)
-      const errorMessage: Message = {
-        id: Date.now(),
-        text: `${ERROR_MESSAGES.STREAMING_ERROR}: ${error instanceof Error ? error.message : "Unknown error"}`,
-        sender: "bot"
+      // Ignore AbortError - it's expected when user stops streaming
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log("Streaming aborted by user")
+        // Force final update to show partial content
+        updateStreamingMessage(true)
+      } else {
+        console.error("Error during streaming:", error)
+        const errorMessage: Message = {
+          id: Date.now(),
+          text: `${ERROR_MESSAGES.STREAMING_ERROR}: ${error instanceof Error ? error.message : "Unknown error"}`,
+          sender: "bot"
+        }
+        setMessages((prev) => [...prev, errorMessage])
       }
-      setMessages((prev) => [...prev, errorMessage])
     } finally {
       // Clear any pending throttle timeout
       if (updateTimeoutRef.current) {
@@ -175,22 +204,34 @@ export function useStreamingResponse(
         updateTimeoutRef.current = null
       }
 
-      // Reset streaming state
+      // Reset streaming state and clear abort controller
       setIsStreaming(false)
       streamingMessageRef.current = ""
       streamingMessageIdRef.current = null
+      abortControllerRef.current = null
 
       // Update token information from session
       if (session?.inputUsage !== undefined && session?.inputQuota !== undefined) {
-        const usage = session.inputUsage ?? 0
+        const conversationTokens = session.inputUsage ?? 0
         const quota = session.inputQuota ?? 0
-        const totalUsage = usage + systemPromptTokens
+        const totalTokens = systemTokens + conversationTokens
+        const percentageUsed = quota > 0 ? (totalTokens / quota) * 100 : 0
+
+        console.log('📊 [TOKEN TRACKING - After Message]')
+        console.log('  System tokens:', systemTokens)
+        console.log('  Conversation tokens (session.inputUsage):', conversationTokens)
+        console.log('  Total tokens:', totalTokens)
+        console.log('  Input quota:', quota)
+        console.log('  Percentage used:', percentageUsed.toFixed(2) + '%')
+        console.log('  Tokens this turn:', conversationTokens - (tokenInfo.conversationTokens || 0))
+        console.log('---')
+
         setTokenInfo({
-          inputUsage: usage,
-          tokensLeft: quota - totalUsage,
+          systemTokens,
+          conversationTokens,
+          totalTokens,
           inputQuota: quota,
-          systemPromptTokens: systemPromptTokens,
-          totalUsage: totalUsage
+          percentageUsed
         })
       }
     }
@@ -198,14 +239,21 @@ export function useStreamingResponse(
 
   const resetTokenInfo = () => {
     setTokenInfo({
-      inputUsage: 0,
-      tokensLeft: 0,
+      systemTokens: 0,
+      conversationTokens: 0,
+      totalTokens: 0,
       inputQuota: 0,
-      systemPromptTokens: 0,
-      totalUsage: 0
+      percentageUsed: 0
     })
   }
 
-  return { isStreaming, sendMessage, tokenInfo, resetTokenInfo }
+  const stopStreaming = () => {
+    if (abortControllerRef.current) {
+      console.log("Stopping streaming...")
+      abortControllerRef.current.abort()
+    }
+  }
+
+  return { isStreaming, sendMessage, tokenInfo, resetTokenInfo, stopStreaming }
 }
 

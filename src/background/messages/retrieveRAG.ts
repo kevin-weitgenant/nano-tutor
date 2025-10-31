@@ -1,6 +1,7 @@
 import type { PlasmoMessaging } from "@plasmohq/messaging"
 import { getEmbedder } from "~background"
 import { retrieveRelevantContext } from "~background/utils/ragRetrieval"
+import type { TranscriptChunk } from "~types/transcript"
 
 export type RequestBody = {
   userQuery: string
@@ -10,6 +11,7 @@ export type RequestBody = {
 
 export type ResponseBody = {
   context: string | null
+  chunks: TranscriptChunk[]
 }
 
 const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async (req, res) => {
@@ -22,7 +24,7 @@ const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async
     const embedder = await getEmbedder()
 
     // Perform RAG retrieval
-    const context = await retrieveRelevantContext(
+    const result = await retrieveRelevantContext(
       userQuery,
       videoId,
       embedder,
@@ -30,10 +32,13 @@ const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async
     )
 
     console.log("📬 Background: RAG retrieval complete, sending response")
-    res.send({ context })
+    res.send({
+      context: result?.context ?? null,
+      chunks: result?.chunks ?? []
+    })
   } catch (error) {
     console.error("📬 Background: RAG retrieval failed:", error)
-    res.send({ context: null })
+    res.send({ context: null, chunks: [] })
   }
 }
 

@@ -4,20 +4,25 @@ import { getChunks } from "~utils/chunkStore"
 import { RAG_CONFIG } from "~utils/constants"
 import { estimateTokens, CHARS_PER_TOKEN } from "~utils/tokenEstimation"
 
+export interface RAGResult {
+  context: string
+  chunks: import("~types/transcript").TranscriptChunk[]
+}
+
 /**
  * Retrieves relevant transcript chunks based on semantic similarity to user query
  * @param userQuery - The user's question/message
  * @param videoId - YouTube video ID
  * @param embedder - Hugging Face embedding model pipeline
  * @param tokenBudget - Maximum tokens available for chunks
- * @returns Formatted string with retrieved chunks, or null if none available
+ * @returns Object with formatted context string and chunk array, or null if none available
  */
 export async function retrieveRelevantContext(
   userQuery: string,
   videoId: string,
   embedder: FeatureExtractionPipeline,
   tokenBudget: number
-): Promise<string | null> {
+): Promise<RAGResult | null> {
   console.log("🔍 RAG Retrieval Starting...")
   console.log(`  Query: "${userQuery.substring(0, 100)}${userQuery.length > 100 ? '...' : ''}"`)
   console.log(`  Video ID: ${videoId}`)
@@ -91,7 +96,10 @@ export async function retrieveRelevantContext(
     console.log(`  Estimated tokens: ${actualTokens} (budget was ${tokenBudget})`)
     console.log(`  Token usage: ${((actualTokens / tokenBudget) * 100).toFixed(1)}%`)
 
-    return result
+    return {
+      context: result,
+      chunks: chunks
+    }
 
   } catch (error) {
     console.error("❌ RAG retrieval failed:", error)

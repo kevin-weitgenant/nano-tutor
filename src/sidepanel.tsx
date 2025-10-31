@@ -82,7 +82,7 @@ function SidePanel() {
     apiAvailable,
     initializationMessages,
     resetSession,
-    systemPromptTokens
+    systemTokens
   } = useAISession({ 
     videoContext, 
     shouldInitialize: availability === 'available',
@@ -90,8 +90,8 @@ function SidePanel() {
   })
   
   // Handle message streaming
-  const { isStreaming, sendMessage, tokenInfo, resetTokenInfo } =
-    useStreamingResponse(session, messages, setMessages, systemPromptTokens)
+  const { isStreaming, sendMessage, tokenInfo, resetTokenInfo, stopStreaming } =
+    useStreamingResponse(session, messages, setMessages, systemTokens)
   
   
     // Effect to handle initialization messages and readiness
@@ -104,10 +104,15 @@ function SidePanel() {
 
  
 
+  // Calculate derived state for ChatInput
+  const isSessionReady = session !== null
+  const hasUserMessages = messages.some(m => m.sender === "user")
+
   const handleSend = async () => {
-    if (!inputText.trim()) return
+    if (!inputText.trim() || !isSessionReady) return
 
     let messageToSend = inputText
+    let retrievedChunks: import("~types/transcript").TranscriptChunk[] = []
 
     // RAG retrieval: only on first message when using RAG mode
     if (usingRAG && !ragContextLoaded && session && videoId) {
@@ -120,15 +125,14 @@ function SidePanel() {
         // Measure user message token cost
         const userTokens = await session.measureInputUsage(userMsg)
 
-        // Calculate available tokens: quota - system - user
-        const available = quota - systemPromptTokens - userTokens
+        // Calculate available tokens: quota - user (system prompt tokens not measured)
+        const available = quota - userTokens
 
         // Use 50% for chunks (leaving 50% as buffer for assistant + follow-ups)
         const chunkBudget = Math.floor(available * RAG_CONFIG.chunkBudgetFrac)
 
         console.log(`💰 Token Budget Breakdown:`)
         console.log(`  Total Quota: ${quota}`)
-        console.log(`  System Prompt: ${systemPromptTokens}`)
         console.log(`  User Message: ${userTokens}`)
         console.log(`  Available: ${available}`)
         console.log(`  Chunk Budget (50%): ${chunkBudget}`)
@@ -145,9 +149,12 @@ function SidePanel() {
             }
           })
 
-          if (response.context) {
+          if (response.context && response.chunks.length > 0) {
+            // Store chunks for UI display
+            retrievedChunks = response.chunks
+            // Send full context to AI
             messageToSend = `${response.context}\n\n${userMsg}`
-            console.log(`✅ Context injected into first message`)
+            console.log(`✅ Context injected into first message (${response.chunks.length} chunks)`)
           } else {
             messageToSend = userMsg
             console.log(`⚠️ No context retrieved, sending user message only`)
@@ -165,7 +172,11 @@ function SidePanel() {
       }
     }
 
-    await sendMessage(messageToSend)
+    // Send message to AI with full context, but display only user text in UI
+    await sendMessage(messageToSend, {
+      displayText: inputText,
+      chunks: retrievedChunks.length > 0 ? retrievedChunks : undefined
+    })
     setInputText("")
   }
 
@@ -174,12 +185,7 @@ function SidePanel() {
     await resetSession()
     resetTokenInfo()
     setRagContextLoaded(false) // Reset RAG flag to allow retrieval on next first message
-    setMessages([
-      {
-        id: Date.now(),
-        ...buildInitialBotMessage(videoContext || undefined)
-      }
-    ])
+    setMessages([]) // Clear all messages completely
   }
 
   return (
@@ -227,12 +233,14 @@ function SidePanel() {
           setInputText={setInputText}
           onSend={handleSend}
           isStreaming={isStreaming}
-          apiAvailable={apiAvailable}
+          isSessionReady={isSessionReady}
           tokenInfo={tokenInfo}
           session={session}
           onReset={handleResetSession}
           isEmbedding={isEmbedding}
           embeddingProgress={embeddingProgress}
+          stopStreaming={stopStreaming}
+          hasUserMessages={hasUserMessages}
         />
       )}
     </div>

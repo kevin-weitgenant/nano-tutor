@@ -1,7 +1,7 @@
 // TypeScript interfaces for Chrome's Prompt API (Gemini Nano)
 
 export interface LanguageModelSession {
-  promptStreaming: (prompt: string) => AsyncIterable<string>
+  promptStreaming: (prompt: string, options?: { signal?: AbortSignal }) => AsyncIterable<string>
   destroy?: () => void
   temperature?: number
   topK?: number
