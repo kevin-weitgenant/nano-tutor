@@ -1,7 +1,7 @@
 ;
 // Inject Tailwind styles into the shadow DOM
 import cssText from "data-text:~style.css";
-import { AlertCircle, Loader2, MessageCircle } from "lucide-react";
+import { AlertCircle, Brain, Loader2, MessageCircle } from "lucide-react";
 import type { PlasmoCSConfig, PlasmoGetInlineAnchor } from "plasmo";
 import { useState } from "react";
 
@@ -159,11 +159,11 @@ const YoutubeChatButton = () => {
   }
 
   return (
-    <div className="relative inline-block">
+    <div className="relative flex gap-2">
       <button
         onClick={handleOpenChat}
         disabled={isLoading}
-        className="flex items-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed mr-2"
+        className="flex items-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
         title="Chat with the video">
         {isLoading ? (
           <>
@@ -175,9 +175,18 @@ const YoutubeChatButton = () => {
             <MessageCircle size={24} />
           </>
         )}
+        <span className="font-medium">Chat</span>
       </button>
 
-      {/* Error notification - positioned below the button */}
+      <button
+        onClick={() => console.log("Quiz button clicked")}
+        className="flex items-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+        title="Take a Quiz">
+        <Brain size={24} />
+        <span className="font-medium">Quiz</span>
+      </button>
+
+      {/* Error notification - positioned below the buttons */}
       {error && (
         <div className="absolute top-full left-0 mt-2 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 max-w-sm whitespace-normal z-[10000]">
           <AlertCircle size={20} className="flex-shrink-0" />
