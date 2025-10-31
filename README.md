@@ -1,6 +1,8 @@
-# YouTube Learn
-
 <div align="center">
+
+<img src="assets/icon.png" alt="chrome extension logo" width="256" />
+
+# Nano Tutor
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](https://react.dev/)
