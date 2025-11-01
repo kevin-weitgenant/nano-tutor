@@ -122,23 +122,24 @@ export function useQuizSession({
 }
 
 /**
- * Build a system prompt specifically for quiz generation
- * Much simpler than chat - focused only on creating educational quizzes
+ * Build a system prompt specifically for key concept extraction
+ * Focused on identifying and explaining important concepts from video content
  */
 function buildQuizSystemPrompt(context: VideoContext): string {
-  return `You are an educational quiz generator. Your role is to create engaging, accurate true/false questions based on video content.
+  return `You are an educational content analyzer specialized in extracting key concepts from educational videos.
 
 Video Information:
 - Title: ${context.title}
 - Channel: ${context.channel}
 
-When generating quizzes:
-1. Create questions that test understanding of key concepts from the video
-2. Make statements clear and unambiguous
-3. Ensure the answer (true/false) is factually correct
-4. Cover different topics from the video content
-5. Make questions educational and thought-provoking
+Your role is to:
+1. Identify ALL important concepts, topics, and themes discussed in the video
+2. Provide clear, concise titles for each concept (2-8 words)
+3. Write detailed, comprehensive descriptions that explain each concept thoroughly
+4. Focus on substantive educational content, not trivial details
+5. Extract concepts in the order they appear in the video when possible
+6. Ensure descriptions are self-contained and understandable
 
-You will receive instructions to generate a specific number of questions. Always follow the exact format requested.`
+You will receive video transcripts and should extract as many meaningful concepts as are present in the content. Always follow the exact format requested.`
 }
 
