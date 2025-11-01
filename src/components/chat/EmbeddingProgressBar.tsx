@@ -1,4 +1,4 @@
-import type { EmbeddingProgress } from "../types/transcript"
+import type { EmbeddingProgress } from "../../types/transcript"
 
 interface EmbeddingProgressBarProps {
   progress: EmbeddingProgress

@@ -1,14 +1,16 @@
 import { X } from "lucide-react"
-import { StreamingObjectDemoPage } from "./examples/StreamingObjectDemo"
+import { StreamingObjectDemoPage } from "~components/quiz/StreamingObjectDemo"
+import type { VideoContext } from "~types/transcript"
 
 interface QuizModalProps {
   onClose: () => void
+  videoContext: VideoContext
 }
 
 /**
  * Modal displaying StreamingObjectDemo for testing streaming functionality
  */
-export function QuizModal({ onClose }: QuizModalProps) {
+export function QuizModal({ onClose, videoContext }: QuizModalProps) {
   return (
     <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
@@ -31,7 +33,7 @@ export function QuizModal({ onClose }: QuizModalProps) {
 
         {/* Content - Scrollable */}
         <div className="overflow-y-auto flex-1">
-          <StreamingObjectDemoPage />
+          <StreamingObjectDemoPage videoContext={videoContext} />
         </div>
       </div>
     </div>

@@ -2,6 +2,11 @@ import { useState } from "react"
 import { z } from "zod"
 import { useStreamingObject } from "../../hooks/useStreamingObject"
 import type { LanguageModelSession } from "../../types/chrome-ai"
+import type { VideoContext } from "~types/transcript"
+
+interface StreamingObjectDemoPageProps {
+  videoContext: VideoContext
+}
 
 const quizSchema = z.array(
   z.object({
@@ -18,7 +23,7 @@ const quizSchema = z.array(
 
 type QuizArray = z.infer<typeof quizSchema>
 
-export function StreamingObjectDemoPage() {
+export function StreamingObjectDemoPage({ videoContext }: StreamingObjectDemoPageProps) {
   const [testStatus, setTestStatus] = useState<string>("Ready")
   const [session, setSession] = useState<LanguageModelSession | null>(null)
 
@@ -68,6 +73,8 @@ export function StreamingObjectDemoPage() {
           <p className="text-gray-600 mb-8">
             Watch items stream in real-time as they are generated
           </p>
+
+          
 
           <div className="space-y-6">
             <div className="flex items-center gap-4">

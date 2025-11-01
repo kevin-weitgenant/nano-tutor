@@ -21,9 +21,9 @@ import { sendToBackground } from "@plasmohq/messaging";
 
 import type { RequestBody as RAGRequestBody, ResponseBody as RAGResponseBody } from "~background/messages/retrieveRAG";
 
-import { ChatInput } from "./components/ChatInput";
-import { MessageList } from "./components/MessageList";
-import { ModelDownload } from "./components/ModelDownload";
+import { ChatInput } from "./components/chat/ChatInput";
+import { MessageList } from "./components/chat/MessageList";
+import { ModelDownload } from "./components/chat/ModelDownload";
 import { useAISession } from "./hooks/useAISession";
 import { useModelAvailability } from "./hooks/useModelAvailability";
 import { useStreamingResponse } from "./hooks/useStreamingResponse";

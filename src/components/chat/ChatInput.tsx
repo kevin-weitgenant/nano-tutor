@@ -1,7 +1,7 @@
 import { Eraser, Loader2, Pause } from "lucide-react"
-import type { TokenInfo } from "../hooks/useStreamingResponse"
-import type { LanguageModelSession } from "../types/chrome-ai"
-import type { EmbeddingProgress } from "../types/transcript"
+import type { TokenInfo } from "../../hooks/useStreamingResponse"
+import type { LanguageModelSession } from "../../types/chrome-ai"
+import type { EmbeddingProgress } from "../../types/transcript"
 import { EmbeddingProgressBar } from "./EmbeddingProgressBar"
 import { CircularProgress } from "./CircularProgress"
 

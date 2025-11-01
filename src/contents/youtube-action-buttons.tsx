@@ -5,9 +5,11 @@ import { AlertCircle } from "lucide-react";
 import type { PlasmoCSConfig, PlasmoGetInlineAnchor } from "plasmo";
 import { useState } from "react";
 
-import { ChatButton } from "~components/ChatButton";
-import { QuizButton } from "~components/QuizButton";
-import { QuizModal } from "~components/QuizModal";
+import { ChatButton } from "~components/chat/ChatButton";
+import { QuizButton } from "~components/quiz/QuizButton";
+import { QuizModal } from "~components/quiz/QuizModal";
+import { useVideoContext } from "~hooks/useVideoContext";
+import type { VideoContext } from "~types/transcript";
 
 // Only run on YouTube video pages
 export const config: PlasmoCSConfig = {
@@ -84,11 +86,40 @@ export const getInlineAnchor: PlasmoGetInlineAnchor = async () => {
 const YoutubeActionButtons = () => {
   const [error, setError] = useState<string | null>(null)
   const [showQuizModal, setShowQuizModal] = useState(false)
+  const [isQuizLoading, setIsQuizLoading] = useState(false)
+  const [quizVideoContext, setQuizVideoContext] = useState<VideoContext | null>(null)
+
+  const { getVideoContext } = useVideoContext()
+
+  const handleQuizClick = async () => {
+    setIsQuizLoading(true)
+    setError(null)
+
+    try {
+      const videoContext = await getVideoContext()
+      setQuizVideoContext(videoContext)
+      setShowQuizModal(true)
+    } catch (err) {
+      const errorMessage = err instanceof Error
+        ? err.message
+        : "Failed to extract transcript. Make sure the video has captions available."
+
+      setError(errorMessage)
+
+      setTimeout(() => setError(null), 5000)
+    } finally {
+      setIsQuizLoading(false)
+    }
+  }
+
+  const handleCloseQuiz = () => {
+    setShowQuizModal(false)
+  }
 
   return (
     <div className="relative flex gap-2">
       <ChatButton onError={setError} />
-      <QuizButton onClick={() => setShowQuizModal(true)} />
+      <QuizButton onClick={handleQuizClick} isLoading={isQuizLoading} />
 
       {/* Error notification - positioned below the buttons */}
       {error && (
@@ -99,7 +130,9 @@ const YoutubeActionButtons = () => {
       )}
 
       {/* Quiz Modal */}
-      {showQuizModal && <QuizModal onClose={() => setShowQuizModal(false)} />}
+      {showQuizModal && quizVideoContext && (
+        <QuizModal onClose={handleCloseQuiz} videoContext={quizVideoContext} />
+      )}
     </div>
   )
 }
