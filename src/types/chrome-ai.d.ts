@@ -8,6 +8,9 @@ export interface LanguageModelSession {
   // System prompt management
   append?: (messages: { role: string; content: string }[]) => Promise<void>
 
+  // Session cloning for parallel conversations
+  clone?: () => Promise<LanguageModelSession>
+
   // Streaming response
   promptStreaming: (
     prompt: string,

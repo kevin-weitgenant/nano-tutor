@@ -1,19 +1,26 @@
-import { Check, ChevronRight } from "lucide-react"
+import { Check, ChevronRight, X } from "lucide-react"
 import type { Concept } from "./quizSchema"
+import type { QuizCompletion } from "~hooks/useQuizStorage"
 
 interface ConceptSidebarProps {
   concepts: Concept[]
   currentConceptIndex: number
-  completedConceptIds: Set<number>
+  completions: QuizCompletion[]
   onSelectConcept: (index: number) => void
 }
 
 export function ConceptSidebar({
   concepts,
   currentConceptIndex,
-  completedConceptIds,
+  completions,
   onSelectConcept
 }: ConceptSidebarProps) {
+  const getCompletionForConcept = (conceptId: number): QuizCompletion | undefined => {
+    return completions.find(c => c.conceptId === conceptId)
+  }
+
+  const passedCount = completions.filter(c => c.passed).length
+
   return (
     <div className="w-96 bg-gray-50 border-r border-gray-200 p-6 flex flex-col h-full">
       {/* Sidebar Header */}
@@ -22,7 +29,7 @@ export function ConceptSidebar({
           Concept Quiz
         </h2>
         <p className="text-sm text-gray-500">
-          {completedConceptIds.size} of {concepts.length} completed
+          {passedCount} of {concepts.length} completed
         </p>
       </div>
 
@@ -30,7 +37,7 @@ export function ConceptSidebar({
       <div className="flex-1 space-y-2 overflow-y-auto">
         {concepts.map((concept, index) => {
           const isCurrent = index === currentConceptIndex
-          const isCompleted = completedConceptIds.has(concept.id)
+          const completion = getCompletionForConcept(concept.id)
 
           return (
             <button
@@ -46,8 +53,12 @@ export function ConceptSidebar({
             >
               {/* Status Icon */}
               <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center">
-                {isCompleted ? (
-                  <Check size={18} className="text-green-600" />
+                {completion ? (
+                  completion.passed ? (
+                    <Check size={18} className="text-green-600" />
+                  ) : (
+                    <X size={18} className="text-red-600" />
+                  )
                 ) : isCurrent ? (
                   <ChevronRight size={18} className="text-blue-600" />
                 ) : (
@@ -57,14 +68,24 @@ export function ConceptSidebar({
                 )}
               </div>
 
-              {/* Concept Title */}
-              <div className="flex-1 min-w-0">
+              {/* Concept Title and Score */}
+              <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
                 <p className={`
                   text-base font-medium truncate
                   ${isCurrent ? 'text-blue-900' : 'text-gray-700'}
                 `}>
                   {concept.title}
                 </p>
+
+                {/* Score Badge */}
+                {completion && (
+                  <span className={`
+                    text-xs font-semibold whitespace-nowrap
+                    ${completion.passed ? 'text-green-600' : 'text-red-600'}
+                  `}>
+                    {completion.score}%
+                  </span>
+                )}
               </div>
             </button>
           )

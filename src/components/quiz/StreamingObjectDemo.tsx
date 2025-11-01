@@ -137,6 +137,7 @@ export function StreamingObjectDemoPage({ videoContext }: StreamingObjectDemoPag
     return (
       <QuizSessionPage
         concepts={concepts}
+        videoId={videoContext.videoId}
         onBack={() => setShowQuizSession(false)}
       />
     )

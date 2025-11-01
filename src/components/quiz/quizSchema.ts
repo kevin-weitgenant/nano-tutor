@@ -17,3 +17,16 @@ export const conceptSchema = z.array(
 export type ConceptArray = z.infer<typeof conceptSchema>
 export type Concept = ConceptArray[number]
 
+export const quizQuestionSchema = z.array(
+  z.object({
+    question: z.string().describe("A true/false question about the concept"),
+    correctAnswer: z.boolean().describe("The correct answer (true or false)")
+  })
+)
+  .min(3)
+  .max(10)
+  .describe("A list of true/false questions about a specific concept")
+
+export type QuizQuestions = z.infer<typeof quizQuestionSchema>
+export type QuizQuestion = QuizQuestions[number]
+

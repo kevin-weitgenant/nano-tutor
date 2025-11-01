@@ -4,15 +4,35 @@ import type { ConceptArray } from "./quizSchema"
 import { ConceptSidebar } from "./ConceptSidebar"
 import { QuizContentArea } from "./QuizContentArea"
 import { QuizNavigation } from "./QuizNavigation"
+import { useQuizGenerationSession } from "~hooks/useQuizGenerationSession"
+import { useQuizStorage, type QuizCompletion } from "~hooks/useQuizStorage"
 
 interface QuizSessionPageProps {
   concepts: ConceptArray
+  videoId: string
   onBack: () => void
 }
 
-export function QuizSessionPage({ concepts, onBack }: QuizSessionPageProps) {
+export function QuizSessionPage({ concepts, videoId, onBack }: QuizSessionPageProps) {
   const [currentConceptIndex, setCurrentConceptIndex] = useState(0)
-  const [completedConceptIds, setCompletedConceptIds] = useState<Set<number>>(new Set())
+
+  // Initialize quiz generation session (base session for cloning)
+  const {
+    baseSession,
+    isInitializing,
+    error: sessionError,
+    generateQuizForConcept
+  } = useQuizGenerationSession()
+
+  // Initialize quiz storage (quizzes and completions)
+  const {
+    completions,
+    saveQuiz,
+    saveCompletion,
+    retakeQuiz,
+    getQuizForConcept,
+    getCompletionForConcept
+  } = useQuizStorage(videoId)
 
   const currentConcept = concepts[currentConceptIndex]
 
@@ -32,12 +52,28 @@ export function QuizSessionPage({ concepts, onBack }: QuizSessionPageProps) {
     setCurrentConceptIndex(index)
   }
 
-  const handleMarkComplete = () => {
-    setCompletedConceptIds(prev => {
-      const newSet = new Set(prev)
-      newSet.add(currentConcept.id)
-      return newSet
-    })
+  const handleQuizComplete = async (score: number, total: number) => {
+    const percentage = Math.round((score / total) * 100)
+    const completion: QuizCompletion = {
+      conceptId: currentConcept.id,
+      score: percentage,
+      totalQuestions: total,
+      completedAt: Date.now(),
+      passed: percentage >= 70
+    }
+
+    await saveCompletion(completion)
+  }
+
+  const handleRetake = async () => {
+    await retakeQuiz(currentConcept.id)
+  }
+
+  const handleContinue = () => {
+    // Advance to next concept if available
+    if (currentConceptIndex < concepts.length - 1) {
+      setCurrentConceptIndex(currentConceptIndex + 1)
+    }
   }
 
   return (
@@ -46,7 +82,7 @@ export function QuizSessionPage({ concepts, onBack }: QuizSessionPageProps) {
       <ConceptSidebar
         concepts={concepts}
         currentConceptIndex={currentConceptIndex}
-        completedConceptIds={completedConceptIds}
+        completions={completions}
         onSelectConcept={handleSelectConcept}
       />
 
@@ -63,6 +99,20 @@ export function QuizSessionPage({ concepts, onBack }: QuizSessionPageProps) {
           </button>
         </div>
 
+        {/* Session Error */}
+        {sessionError && (
+          <div className="mx-8 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            Session Error: {sessionError}
+          </div>
+        )}
+
+        {/* Session Initializing */}
+        {isInitializing && (
+          <div className="mx-8 mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm">
+            Initializing quiz generation session...
+          </div>
+        )}
+
         {/* Content */}
         <div className="flex-1 p-8">
           <div className="max-w-4xl mx-auto">
@@ -71,8 +121,13 @@ export function QuizSessionPage({ concepts, onBack }: QuizSessionPageProps) {
                 concept={currentConcept}
                 conceptNumber={currentConceptIndex + 1}
                 totalConcepts={concepts.length}
-                isCompleted={completedConceptIds.has(currentConcept.id)}
-                onMarkComplete={handleMarkComplete}
+                completion={getCompletionForConcept(currentConcept.id)}
+                getQuizForConcept={getQuizForConcept}
+                generateQuizForConcept={generateQuizForConcept}
+                saveQuiz={saveQuiz}
+                onQuizComplete={handleQuizComplete}
+                onRetake={handleRetake}
+                onContinue={handleContinue}
               />
 
               {/* Navigation - Fixed at bottom */}

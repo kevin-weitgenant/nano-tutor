@@ -5,17 +5,27 @@ interface QuizQuestionProps {
   questionNumber: number
   question: string
   correctAnswer: boolean
+  onAnswer?: (answer: boolean) => void
+  disabled?: boolean
 }
 
 /**
  * Interactive quiz question component
  * Shows question with True/False buttons, reveals answer after user clicks
  */
-export function QuizQuestion({ questionNumber, question, correctAnswer }: QuizQuestionProps) {
+export function QuizQuestion({
+  questionNumber,
+  question,
+  correctAnswer,
+  onAnswer,
+  disabled = false
+}: QuizQuestionProps) {
   const [userAnswer, setUserAnswer] = useState<boolean | null>(null)
 
   const handleAnswer = (answer: boolean) => {
+    if (disabled) return
     setUserAnswer(answer)
+    onAnswer?.(answer)
   }
 
   const isAnswered = userAnswer !== null
