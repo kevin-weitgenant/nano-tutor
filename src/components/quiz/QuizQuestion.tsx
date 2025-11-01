@@ -47,14 +47,14 @@ export function QuizQuestion({
       <div className="flex items-start gap-4">
         {/* Number Badge - styled like ConceptCard */}
         <span className="flex-shrink-0 flex items-center justify-center
-                         w-8 h-8 bg-blue-500 text-white font-bold
-                         text-sm rounded-full">
+                         w-10 h-10 bg-blue-500 text-white font-bold
+                         text-base rounded-full">
           {questionNumber}
         </span>
 
         <div className="flex-1 space-y-4">
           {/* Question Text */}
-          <p className="text-base text-gray-800 leading-relaxed font-medium">
+          <p className="text-lg text-gray-800 leading-relaxed font-medium">
             {question}
           </p>
 
@@ -63,18 +63,18 @@ export function QuizQuestion({
             <div className="flex gap-3">
               <button
                 onClick={() => handleAnswer(true)}
-                className="flex-1 px-6 py-3 bg-green-50 text-green-700
+                className="flex-1 px-8 py-4 bg-green-50 text-green-700
                            font-semibold rounded-lg border border-green-200
                            hover:bg-green-100 hover:border-green-300
-                           transition-all shadow-sm hover:shadow-md">
+                           transition-all shadow-sm hover:shadow-md text-base">
                 True
               </button>
               <button
                 onClick={() => handleAnswer(false)}
-                className="flex-1 px-6 py-3 bg-red-50 text-red-700
+                className="flex-1 px-8 py-4 bg-red-50 text-red-700
                            font-semibold rounded-lg border border-red-200
                            hover:bg-red-100 hover:border-red-300
-                           transition-all shadow-sm hover:shadow-md">
+                           transition-all shadow-sm hover:shadow-md text-base">
                 False
               </button>
             </div>

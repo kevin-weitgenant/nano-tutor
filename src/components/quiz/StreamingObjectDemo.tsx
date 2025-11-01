@@ -187,10 +187,9 @@ export function StreamingObjectDemoPage({ videoContext }: StreamingObjectDemoPag
                 <div className="flex justify-center pt-4">
                   <button
                     onClick={() => setShowQuizSession(true)}
-                    className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
-                  >
+                    className="flex items-center gap-2 px-10 py-4 bg-blue-600 text-white text-lg font-bold rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg">
                     Start Quiz
-                    <ArrowRight size={18} />
+                    <ArrowRight size={20} />
                   </button>
                 </div>
               </>

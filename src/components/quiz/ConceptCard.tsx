@@ -93,12 +93,12 @@ export function ConceptCard({ concept, onUpdate, onDelete }: ConceptCardProps) {
           className="flex items-center gap-3 p-4 cursor-pointer"
         >
           {/* Number Badge */}
-          <span className="flex-shrink-0 flex items-center justify-center w-8 h-8 bg-blue-500 bg-opacity-90 text-white font-bold text-sm rounded-full">
+          <span className="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-blue-500 bg-opacity-90 text-white font-bold text-base rounded-full">
             {concept.id}
           </span>
 
           {/* Title */}
-          <h3 className="flex-1 text-xl font-bold text-gray-900">
+          <h3 className="flex-1 text-2xl font-bold text-gray-900">
             {concept.title}
           </h3>
 
