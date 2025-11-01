@@ -17,6 +17,7 @@ interface UseStreamingQuizGenerationReturn {
   error: Error | null
   generateQuiz: (concept: Concept) => Promise<void>
   stop: () => void
+  reset: () => void
 }
 
 /**
@@ -124,11 +125,18 @@ export function useStreamingQuizGeneration({
     }
   }
 
+  const reset = () => {
+    setQuestions([])
+    setError(null)
+    setIsLoading(false)
+  }
+
   return {
     questions,
     isLoading,
     error,
     generateQuiz,
-    stop
+    stop,
+    reset
   }
 }

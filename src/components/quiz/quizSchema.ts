@@ -20,7 +20,8 @@ export type Concept = ConceptArray[number]
 export const quizQuestionSchema = z.array(
   z.object({
     question: z.string().describe("A true/false question about the concept"),
-    correctAnswer: z.boolean().describe("The correct answer (true or false)")
+    correctAnswer: z.boolean().describe("The correct answer (true or false)"),
+    explanation: z.string().describe("A brief explanation of why this answer is correct, helping users understand the concept better")
   })
 )
   .min(3)

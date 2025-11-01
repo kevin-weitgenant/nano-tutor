@@ -24,8 +24,9 @@ Requirements:
 - Mix of difficulty levels (easy, medium, hard)
 - Questions should test understanding, not just memorization
 - Ensure variety (don't repeat the same pattern)
+- For each question, provide a brief explanation (1-2 sentences) that clarifies why the answer is correct
 
-Return ONLY the JSON array of questions.`
+Return ONLY the JSON array of questions with their explanations.`
 }
 
 export function generateConceptPrompt(videoContext: VideoContext): string {

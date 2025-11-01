@@ -5,6 +5,7 @@ interface QuizQuestionProps {
   questionNumber: number
   question: string
   correctAnswer: boolean
+  explanation: string
   isStreaming?: boolean
   onAnswer?: (answer: boolean) => void
   disabled?: boolean
@@ -18,6 +19,7 @@ export function QuizQuestion({
   questionNumber,
   question,
   correctAnswer,
+  explanation,
   isStreaming = false,
   onAnswer,
   disabled = false
@@ -113,6 +115,16 @@ export function QuizQuestion({
                   <span className="font-bold">
                     {correctAnswer ? "True" : "False"}
                   </span>
+                </div>
+
+                {/* Explanation */}
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <p className="text-gray-700">
+                    <span className="font-semibold text-gray-800">Explanation:</span>{" "}
+                    <span className="text-gray-600 leading-relaxed">
+                      {explanation}
+                    </span>
+                  </p>
                 </div>
               </div>
             </div>

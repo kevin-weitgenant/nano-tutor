@@ -35,13 +35,15 @@ export function QuizContentArea({
   const [savedQuestions, setSavedQuestions] = useState<QuizQuestions>([])
   const [userAnswers, setUserAnswers] = useState<(boolean | undefined)[]>([])
   const [isLoadingSaved, setIsLoadingSaved] = useState(false)
+  const [hasReportedCompletion, setHasReportedCompletion] = useState(false)
 
   // Streaming quiz generation hook
   const {
     questions: streamingQuestions,
     isLoading: isGenerating,
     error: streamingError,
-    generateQuiz
+    generateQuiz,
+    reset: resetStreamingQuiz
   } = useStreamingQuizGeneration({
     baseSession,
     onFinish: async (questions) => {
@@ -62,7 +64,53 @@ export function QuizContentArea({
       setUserAnswers([])
     }
     setIsLoadingSaved(false)
+
+    // Reset streaming questions and completion flag when changing concepts
+    resetStreamingQuiz()
+    setHasReportedCompletion(false)
   }, [concept.id, getQuizForConcept])
+
+  // Determine which questions to display (streaming or saved)
+  const displayQuestions = savedQuestions.length > 0 ? savedQuestions : streamingQuestions
+
+  // Check if all questions are answered
+  const allQuestionsAnswered =
+    displayQuestions.length > 0 &&
+    userAnswers.length === displayQuestions.length &&
+    userAnswers.every(answer => answer !== undefined)
+
+  // Calculate score
+  const calculateScore = () => {
+    let correct = 0
+    displayQuestions.forEach((q, index) => {
+      if (userAnswers[index] === q.correctAnswer) {
+        correct++
+      }
+    })
+    return correct
+  }
+
+  const quizGenerated = displayQuestions.length > 0
+  const generationError = streamingError?.message || null
+
+  // Sync userAnswers array length when displayQuestions changes (for streaming)
+  useEffect(() => {
+    if (displayQuestions.length > userAnswers.length) {
+      setUserAnswers(prev => [
+        ...prev,
+        ...new Array(displayQuestions.length - prev.length).fill(undefined)
+      ])
+    }
+  }, [displayQuestions.length])
+
+  // Trigger completion when all questions answered
+  useEffect(() => {
+    if (allQuestionsAnswered && displayQuestions.length > 0 && !hasReportedCompletion) {
+      const score = calculateScore()
+      onQuizComplete(score, displayQuestions.length)
+      setHasReportedCompletion(true)
+    }
+  }, [allQuestionsAnswered, displayQuestions.length, hasReportedCompletion])
 
   const handleGenerateQuiz = async () => {
     // Check if already generated and saved
@@ -88,36 +136,8 @@ export function QuizContentArea({
     // Reset for fresh attempt
     setSavedQuestions([])
     setUserAnswers([])
+    setHasReportedCompletion(false)
   }
-
-  // Determine which questions to display (streaming or saved)
-  const displayQuestions = savedQuestions.length > 0 ? savedQuestions : streamingQuestions
-
-  // Check if all questions are answered
-  const allQuestionsAnswered = displayQuestions.length > 0 &&
-    userAnswers.every(answer => answer !== undefined)
-
-  // Calculate score
-  const calculateScore = () => {
-    let correct = 0
-    displayQuestions.forEach((q, index) => {
-      if (userAnswers[index] === q.correctAnswer) {
-        correct++
-      }
-    })
-    return correct
-  }
-
-  // Trigger completion when all questions answered
-  useEffect(() => {
-    if (allQuestionsAnswered && displayQuestions.length > 0) {
-      const score = calculateScore()
-      onQuizComplete(score, displayQuestions.length)
-    }
-  }, [allQuestionsAnswered, displayQuestions.length])
-
-  const quizGenerated = displayQuestions.length > 0
-  const generationError = streamingError?.message || null
 
   return (
     <div className="space-y-8">
@@ -174,6 +194,7 @@ export function QuizContentArea({
                   questionNumber={index + 1}
                   question={q.question}
                   correctAnswer={q.correctAnswer}
+                  explanation={q.explanation}
                   isStreaming={isGenerating && index === displayQuestions.length - 1}
                   onAnswer={(answer) => handleAnswer(index, answer)}
                   disabled={userAnswers[index] !== undefined}
