@@ -1,8 +1,10 @@
 import { useState } from "react"
 import { z } from "zod"
 import { useStreamingObject } from "../../hooks/useStreamingObject"
-import type { LanguageModelSession } from "../../types/chrome-ai"
 import type { VideoContext } from "~types/transcript"
+import { useModelAvailability } from "~hooks/useModelAvailability"
+import { useQuizSession } from "~hooks/useQuizSession"
+import { ModelDownload } from "~components/chat/ModelDownload"
 
 interface StreamingObjectDemoPageProps {
   videoContext: VideoContext
@@ -13,7 +15,7 @@ const quizSchema = z.array(
     id: z.number().describe("The question number"),
     question: z
       .string()
-      .describe("A true or false statement about the solar system"),
+      .describe("A true or false statement about the video content"),
     answer: z.boolean().describe("Whether the statement is true")
   })
 )
@@ -25,22 +27,24 @@ type QuizArray = z.infer<typeof quizSchema>
 
 export function StreamingObjectDemoPage({ videoContext }: StreamingObjectDemoPageProps) {
   const [testStatus, setTestStatus] = useState<string>("Ready")
-  const [session, setSession] = useState<LanguageModelSession | null>(null)
 
-  const initializeSession = async () => {
-    if (!("LanguageModel" in self)) {
-      setTestStatus("ERROR: LanguageModel API not available")
-      return null
-    }
+  // Check model availability and handle downloads
+  const {
+    availability,
+    downloadProgress,
+    isExtracting,
+    startDownload
+  } = useModelAvailability()
 
-    try {
-      const newSession = await (self as any).LanguageModel.create()
-      return newSession
-    } catch (error) {
-      setTestStatus(`ERROR: ${error instanceof Error ? error.message : "Unknown error"}`)
-      return null
-    }
-  }
+  // Initialize quiz session with video context
+  const {
+    session,
+    apiAvailable,
+    initializationMessage
+  } = useQuizSession({ 
+    videoContext, 
+    shouldInitialize: availability === 'available'
+  })
 
   const { object, error, isLoading, submit, stop } = useStreamingObject<QuizArray>({
     schema: quizSchema,
@@ -51,38 +55,94 @@ export function StreamingObjectDemoPage({ videoContext }: StreamingObjectDemoPag
   })
 
   const runStreamingTest = async () => {
-    setTestStatus("Loading...")
-    
-    const newSession = await initializeSession()
-    if (!newSession) return
+    if (!session) {
+      setTestStatus("ERROR: Session not ready")
+      return
+    }
 
-    setSession(newSession)
+    setTestStatus("Generating quiz...")
 
     await submit(
-      "Generate exactly 5 true or false questions about the solar system. For each question, return an object with fields id (1-5), question (string), and answer (boolean where true means the statement is correct)."
+      `Generate exactly 5 true or false questions about the video "${videoContext.title}". For each question, return an object with fields id (1-5), question (string statement about the video content), and answer (boolean where true means the statement is correct).`
     )
   }
+
+  // Show model download UI if model isn't available
+  if (availability !== 'available') {
+    return (
+      <div className="min-h-screen bg-gray-100 p-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white rounded-lg shadow-lg p-8">
+            <h1 className="text-3xl font-bold mb-2">
+              Quiz Generator
+            </h1>
+            <p className="text-gray-600 mb-8">
+              Generate AI-powered quizzes from video content
+            </p>
+
+            <div className="mb-6 p-4 rounded-lg border border-blue-200 bg-blue-50">
+              <h2 className="text-sm font-semibold text-blue-700 uppercase tracking-wide mb-1">
+                Video Ready
+              </h2>
+              <p className="text-lg font-medium text-blue-900">
+                {videoContext.title}
+              </p>
+              <div className="text-sm text-blue-700">
+                <span className="font-semibold">Channel:</span> {videoContext.channel}
+              </div>
+            </div>
+
+            <ModelDownload
+              availability={availability}
+              downloadProgress={downloadProgress}
+              isExtracting={isExtracting}
+              onStartDownload={startDownload}
+            />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const isSessionReady = session !== null
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-lg shadow-lg p-8">
           <h1 className="text-3xl font-bold mb-2">
-            Streaming Object Demo
+            Quiz Generator
           </h1>
           <p className="text-gray-600 mb-8">
-            Watch items stream in real-time as they are generated
+            Generate AI-powered quizzes from video content
           </p>
 
-          
+          <div className="mb-6 p-4 rounded-lg border border-blue-200 bg-blue-50">
+            <h2 className="text-sm font-semibold text-blue-700 uppercase tracking-wide mb-1">
+              Video Ready
+            </h2>
+            <p className="text-lg font-medium text-blue-900">
+              {videoContext.title}
+            </p>
+            <div className="text-sm text-blue-700">
+              <span className="font-semibold">Channel:</span> {videoContext.channel}
+            </div>
+          </div>
+
+          {/* Show initialization error if present */}
+          {initializationMessage && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-800">{initializationMessage}</p>
+            </div>
+          )}
 
           <div className="space-y-6">
             <div className="flex items-center gap-4">
               <button
                 onClick={runStreamingTest}
-                disabled={isLoading}
+                disabled={isLoading || !isSessionReady}
                 className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors">
-                {isLoading ? "Streaming..." : "Start"}
+                {isLoading ? "Generating..." : "Generate Quiz"}
               </button>
 
               {isLoading && (
@@ -110,7 +170,7 @@ export function StreamingObjectDemoPage({ videoContext }: StreamingObjectDemoPag
             {object && Array.isArray(object) && object.length > 0 && (
               <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
                 <h3 className="font-semibold mb-2">
-                  Results ({object.length} items):
+                  Quiz Questions ({object.length} items):
                 </h3>
                 <div className="space-y-2">
                   {object.map((item, idx) => (

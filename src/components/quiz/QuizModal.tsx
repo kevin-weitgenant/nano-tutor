@@ -8,7 +8,8 @@ interface QuizModalProps {
 }
 
 /**
- * Modal displaying StreamingObjectDemo for testing streaming functionality
+ * Modal displaying AI-powered quiz generator
+ * Handles model download, session initialization, and quiz generation
  */
 export function QuizModal({ onClose, videoContext }: QuizModalProps) {
   return (
@@ -21,7 +22,7 @@ export function QuizModal({ onClose, videoContext }: QuizModalProps) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">
-            Streaming Object Demo
+            Quiz Generator
           </h2>
           <button
             onClick={onClose}
