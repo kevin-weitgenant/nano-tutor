@@ -115,15 +115,15 @@ export function QuizSessionPage({ concepts, videoId, onBack }: QuizSessionPagePr
 
         {/* Content */}
         <div className="flex-1 p-8">
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-6xl mx-auto">
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
               <QuizContentArea
                 concept={currentConcept}
                 conceptNumber={currentConceptIndex + 1}
                 totalConcepts={concepts.length}
                 completion={getCompletionForConcept(currentConcept.id)}
+                baseSession={baseSession}
                 getQuizForConcept={getQuizForConcept}
-                generateQuizForConcept={generateQuizForConcept}
                 saveQuiz={saveQuiz}
                 onQuizComplete={handleQuizComplete}
                 onRetake={handleRetake}

@@ -2,16 +2,18 @@ import { useState, useEffect } from "react"
 import { Sparkles } from "lucide-react"
 import type { Concept, QuizQuestions } from "./quizSchema"
 import type { QuizData, QuizCompletion } from "~hooks/useQuizStorage"
+import type { LanguageModelSession } from "~types/chrome-ai"
 import { QuizQuestion } from "./QuizQuestion"
 import { QuizResults } from "./QuizResults"
+import { useStreamingQuizGeneration } from "~hooks/useStreamingQuizGeneration"
 
 interface QuizContentAreaProps {
   concept: Concept
   conceptNumber: number
   totalConcepts: number
   completion: QuizCompletion | undefined
+  baseSession: LanguageModelSession | null
   getQuizForConcept: (conceptId: number) => QuizData | undefined
-  generateQuizForConcept: (concept: Concept) => Promise<QuizQuestions>
   saveQuiz: (conceptId: number, questions: QuizQuestions) => Promise<void>
   onQuizComplete: (score: number, total: number) => void
   onRetake: () => void
@@ -23,58 +25,56 @@ export function QuizContentArea({
   conceptNumber,
   totalConcepts,
   completion,
+  baseSession,
   getQuizForConcept,
-  generateQuizForConcept,
   saveQuiz,
   onQuizComplete,
   onRetake,
   onContinue
 }: QuizContentAreaProps) {
-  const [quizQuestions, setQuizQuestions] = useState<QuizQuestions>([])
+  const [savedQuestions, setSavedQuestions] = useState<QuizQuestions>([])
   const [userAnswers, setUserAnswers] = useState<(boolean | undefined)[]>([])
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [generationError, setGenerationError] = useState<string | null>(null)
+  const [isLoadingSaved, setIsLoadingSaved] = useState(false)
 
-  // Load quiz when concept changes
+  // Streaming quiz generation hook
+  const {
+    questions: streamingQuestions,
+    isLoading: isGenerating,
+    error: streamingError,
+    generateQuiz
+  } = useStreamingQuizGeneration({
+    baseSession,
+    onFinish: async (questions) => {
+      // Save to storage when generation completes
+      await saveQuiz(concept.id, questions)
+    }
+  })
+
+  // Load saved quiz when concept changes
   useEffect(() => {
+    setIsLoadingSaved(true)
     const savedQuiz = getQuizForConcept(concept.id)
     if (savedQuiz) {
-      setQuizQuestions(savedQuiz.questions)
+      setSavedQuestions(savedQuiz.questions)
       setUserAnswers(new Array(savedQuiz.questions.length).fill(undefined))
     } else {
-      setQuizQuestions([])
+      setSavedQuestions([])
       setUserAnswers([])
     }
-    setGenerationError(null)
+    setIsLoadingSaved(false)
   }, [concept.id, getQuizForConcept])
 
   const handleGenerateQuiz = async () => {
-    setIsGenerating(true)
-    setGenerationError(null)
-
-    try {
-      // Check if already generated and saved
-      const savedQuiz = getQuizForConcept(concept.id)
-      if (savedQuiz) {
-        setQuizQuestions(savedQuiz.questions)
-        setUserAnswers(new Array(savedQuiz.questions.length).fill(undefined))
-        return
-      }
-
-      // Generate new quiz using cloned session
-      const questions = await generateQuizForConcept(concept)
-
-      // Save to storage
-      await saveQuiz(concept.id, questions)
-
-      setQuizQuestions(questions)
-      setUserAnswers(new Array(questions.length).fill(undefined))
-    } catch (err) {
-      console.error("Quiz generation failed:", err)
-      setGenerationError(err instanceof Error ? err.message : "Failed to generate quiz")
-    } finally {
-      setIsGenerating(false)
+    // Check if already generated and saved
+    const savedQuiz = getQuizForConcept(concept.id)
+    if (savedQuiz) {
+      setSavedQuestions(savedQuiz.questions)
+      setUserAnswers(new Array(savedQuiz.questions.length).fill(undefined))
+      return
     }
+
+    // Generate new quiz with streaming
+    await generateQuiz(concept)
   }
 
   const handleAnswer = (questionIndex: number, answer: boolean) => {
@@ -85,19 +85,22 @@ export function QuizContentArea({
 
   const handleRetake = async () => {
     await onRetake()
-    // Reset answers for fresh attempt
-    setQuizQuestions([])
+    // Reset for fresh attempt
+    setSavedQuestions([])
     setUserAnswers([])
   }
 
+  // Determine which questions to display (streaming or saved)
+  const displayQuestions = savedQuestions.length > 0 ? savedQuestions : streamingQuestions
+
   // Check if all questions are answered
-  const allQuestionsAnswered = quizQuestions.length > 0 &&
+  const allQuestionsAnswered = displayQuestions.length > 0 &&
     userAnswers.every(answer => answer !== undefined)
 
   // Calculate score
   const calculateScore = () => {
     let correct = 0
-    quizQuestions.forEach((q, index) => {
+    displayQuestions.forEach((q, index) => {
       if (userAnswers[index] === q.correctAnswer) {
         correct++
       }
@@ -107,13 +110,14 @@ export function QuizContentArea({
 
   // Trigger completion when all questions answered
   useEffect(() => {
-    if (allQuestionsAnswered && quizQuestions.length > 0) {
+    if (allQuestionsAnswered && displayQuestions.length > 0) {
       const score = calculateScore()
-      onQuizComplete(score, quizQuestions.length)
+      onQuizComplete(score, displayQuestions.length)
     }
-  }, [allQuestionsAnswered, quizQuestions.length])
+  }, [allQuestionsAnswered, displayQuestions.length])
 
-  const quizGenerated = quizQuestions.length > 0
+  const quizGenerated = displayQuestions.length > 0
+  const generationError = streamingError?.message || null
 
   return (
     <div className="space-y-8">
@@ -144,28 +148,47 @@ export function QuizContentArea({
       </div>
 
       {/* Quiz Content Area - Fixed Height, Scrollable */}
-      <div className="h-[450px] overflow-y-auto">
+      <div className="h-[550px] overflow-y-auto">
         {quizGenerated ? (
-          <div className="space-y-6 pr-2">
-            {quizQuestions.map((q, index) => (
-              <QuizQuestion
-                key={index}
-                questionNumber={index + 1}
-                question={q.question}
-                correctAnswer={q.correctAnswer}
-                onAnswer={(answer) => handleAnswer(index, answer)}
-                disabled={userAnswers[index] !== undefined}
-              />
-            ))}
+          <div className="space-y-4">
+            {/* Progress Header */}
+            <div className="flex items-baseline gap-3 mb-2">
+              <h3 className="font-semibold text-base text-gray-700">
+                Quiz Questions
+              </h3>
+              <span className="text-sm text-gray-500">
+                ({displayQuestions.length} question{displayQuestions.length !== 1 ? 's' : ''})
+              </span>
+              {isGenerating && (
+                <span className="text-xs text-blue-600 font-medium animate-pulse">
+                  Generating...
+                </span>
+              )}
+            </div>
 
-            {allQuestionsAnswered && (
-              <QuizResults
-                score={calculateScore()}
-                total={quizQuestions.length}
-                onContinue={onContinue}
-                onRetake={handleRetake}
-              />
-            )}
+            {/* Question List */}
+            <div className="space-y-3 pr-2">
+              {displayQuestions.map((q, index) => (
+                <QuizQuestion
+                  key={index}
+                  questionNumber={index + 1}
+                  question={q.question}
+                  correctAnswer={q.correctAnswer}
+                  isStreaming={isGenerating && index === displayQuestions.length - 1}
+                  onAnswer={(answer) => handleAnswer(index, answer)}
+                  disabled={userAnswers[index] !== undefined}
+                />
+              ))}
+
+              {allQuestionsAnswered && (
+                <QuizResults
+                  score={calculateScore()}
+                  total={displayQuestions.length}
+                  onContinue={onContinue}
+                  onRetake={handleRetake}
+                />
+              )}
+            </div>
           </div>
         ) : (
           <div className="h-full flex items-center justify-center">

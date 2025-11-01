@@ -5,18 +5,20 @@ interface QuizQuestionProps {
   questionNumber: number
   question: string
   correctAnswer: boolean
+  isStreaming?: boolean
   onAnswer?: (answer: boolean) => void
   disabled?: boolean
 }
 
 /**
- * Interactive quiz question component
- * Shows question with True/False buttons, reveals answer after user clicks
+ * Interactive quiz question component with improved aesthetics
+ * Styled to match ConceptCard design language
  */
 export function QuizQuestion({
   questionNumber,
   question,
   correctAnswer,
+  isStreaming = false,
   onAnswer,
   disabled = false
 }: QuizQuestionProps) {
@@ -32,55 +34,86 @@ export function QuizQuestion({
   const isCorrect = isAnswered && userAnswer === correctAnswer
 
   return (
-    <div className="p-4 bg-white rounded border border-gray-300">
-      <div className="flex items-start gap-3">
-        <span className="font-bold text-blue-600 text-lg">#{questionNumber}</span>
-        <div className="flex-1 space-y-3">
+    <div className={`
+      bg-white rounded-lg border transition-all duration-200
+      ${isStreaming
+        ? 'border-blue-200 animate-pulse shadow-md'
+        : 'border-gray-100 hover:border-gray-200'
+      }
+      p-5 shadow-sm hover:shadow-md
+    `}>
+      <div className="flex items-start gap-4">
+        {/* Number Badge - styled like ConceptCard */}
+        <span className="flex-shrink-0 flex items-center justify-center
+                         w-8 h-8 bg-blue-500 text-white font-bold
+                         text-sm rounded-full">
+          {questionNumber}
+        </span>
+
+        <div className="flex-1 space-y-4">
           {/* Question Text */}
-          <div className="text-sm text-gray-800 font-medium">
+          <p className="text-base text-gray-800 leading-relaxed font-medium">
             {question}
-          </div>
+          </p>
 
           {/* Answer Buttons or Result */}
           {!isAnswered ? (
             <div className="flex gap-3">
               <button
                 onClick={() => handleAnswer(true)}
-                className="flex-1 px-4 py-2 bg-green-100 text-green-800 font-semibold rounded-lg hover:bg-green-200 transition-colors border border-green-300">
+                className="flex-1 px-6 py-3 bg-green-50 text-green-700
+                           font-semibold rounded-lg border border-green-200
+                           hover:bg-green-100 hover:border-green-300
+                           transition-all shadow-sm hover:shadow-md">
                 True
               </button>
               <button
                 onClick={() => handleAnswer(false)}
-                className="flex-1 px-4 py-2 bg-red-100 text-red-800 font-semibold rounded-lg hover:bg-red-200 transition-colors border border-red-300">
+                className="flex-1 px-6 py-3 bg-red-50 text-red-700
+                           font-semibold rounded-lg border border-red-200
+                           hover:bg-red-100 hover:border-red-300
+                           transition-all shadow-sm hover:shadow-md">
                 False
               </button>
             </div>
           ) : (
-            <div className={`p-3 rounded-lg border ${isCorrect ? 'bg-green-50 border-green-300' : 'bg-red-50 border-red-300'}`}>
-              <div className="flex items-center gap-2 mb-2">
+            <div className={`
+              p-4 rounded-lg border
+              ${isCorrect
+                ? 'bg-green-50 border-green-200'
+                : 'bg-red-50 border-red-200'
+              }
+            `}>
+              <div className="flex items-center gap-2 mb-3">
                 {isCorrect ? (
                   <>
                     <Check size={20} className="text-green-600" />
-                    <span className="font-semibold text-green-800">Correct!</span>
+                    <span className="font-semibold text-green-800 text-base">
+                      Correct!
+                    </span>
                   </>
                 ) : (
                   <>
                     <X size={20} className="text-red-600" />
-                    <span className="font-semibold text-red-800">Incorrect</span>
+                    <span className="font-semibold text-red-800 text-base">
+                      Incorrect
+                    </span>
                   </>
                 )}
               </div>
-              <div className="text-sm text-gray-700">
-                <span className="font-semibold">Your answer:</span>{" "}
-                <span className={userAnswer ? "text-green-700" : "text-red-700"}>
-                  {userAnswer ? "True" : "False"}
-                </span>
-              </div>
-              <div className="text-sm text-gray-700">
-                <span className="font-semibold">Correct answer:</span>{" "}
-                <span className="font-bold">
-                  {correctAnswer ? "True" : "False"}
-                </span>
+              <div className="space-y-1 text-sm">
+                <div className="text-gray-700">
+                  <span className="font-semibold">Your answer:</span>{" "}
+                  <span className={userAnswer ? "text-green-700 font-medium" : "text-red-700 font-medium"}>
+                    {userAnswer ? "True" : "False"}
+                  </span>
+                </div>
+                <div className="text-gray-700">
+                  <span className="font-semibold">Correct answer:</span>{" "}
+                  <span className="font-bold">
+                    {correctAnswer ? "True" : "False"}
+                  </span>
+                </div>
               </div>
             </div>
           )}
