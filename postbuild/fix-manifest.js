@@ -2,13 +2,23 @@ const fs = require("fs")
 const path = require("path")
 
 const fixManifest = () => {
-  // Try to get Plasmo env vars, fallback to defaults for dev mode
-  const buildDir = process.env.PLASMO_BUILD_DIR || path.join(__dirname, "../build")
-  const target = process.env.PLASMO_TARGET || "chrome-mv3"
-  const tag = process.env.PLASMO_TAG || "dev"
-  
-  const targetDir = `${buildDir}/${target}-${tag}`
-  const manifestFile = `${targetDir}/manifest.json`
+  const prodDir = path.join(__dirname, "../build/chrome-mv3-prod")
+  const devDir = path.join(__dirname, "../build/chrome-mv3-dev")
+
+  let targetDir
+
+  if (fs.existsSync(prodDir)) {
+    targetDir = prodDir
+    console.log("✓ Production build detected")
+  } else if (fs.existsSync(devDir)) {
+    targetDir = devDir
+    console.log("✓ Development build detected")
+  } else {
+    console.error("Error: No build directory found.")
+    return
+  }
+
+  const manifestFile = path.join(targetDir, "manifest.json")
 
   try {
     // Read the manifest file
