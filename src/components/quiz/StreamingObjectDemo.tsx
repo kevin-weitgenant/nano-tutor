@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { ArrowRight } from "lucide-react"
 import { useStreamingObject } from "../../hooks/useStreamingObject"
 import type { VideoContext } from "~types/transcript"
 import { useModelAvailability } from "~hooks/useModelAvailability"
@@ -12,6 +13,7 @@ import { ConceptList } from "./QuizList"
 import { generateConceptPrompt } from "./quizPrompts"
 import { QuizPageLayout } from "./QuizPageLayout"
 import { QuizHeader } from "./QuizHeader"
+import { QuizSessionPage } from "./QuizSessionPage"
 
 interface StreamingObjectDemoPageProps {
   videoContext: VideoContext
@@ -20,6 +22,7 @@ interface StreamingObjectDemoPageProps {
 export function StreamingObjectDemoPage({ videoContext }: StreamingObjectDemoPageProps) {
   const [testStatus, setTestStatus] = useState<string>("Ready")
   const [concepts, setConcepts] = useState<ConceptArray | null>(null)
+  const [showQuizSession, setShowQuizSession] = useState(false)
 
   // Concept storage hook
   const {
@@ -129,6 +132,17 @@ export function StreamingObjectDemoPage({ videoContext }: StreamingObjectDemoPag
 
   const isSessionReady = session !== null
 
+  // Show quiz session page if user clicked "Start Quiz"
+  if (showQuizSession && concepts && concepts.length > 0) {
+    return (
+      <QuizSessionPage
+        concepts={concepts}
+        onBack={() => setShowQuizSession(false)}
+      />
+    )
+  }
+
+  // Show extraction page
   return (
     <QuizPageLayout>
       <QuizHeader />
@@ -161,11 +175,24 @@ export function StreamingObjectDemoPage({ videoContext }: StreamingObjectDemoPag
             {error && <ErrorDisplay message={error.message} />}
 
             {concepts && (
-              <ConceptList
-                concepts={concepts}
-                onUpdateConcept={handleUpdateConcept}
-                onDeleteConcept={handleDeleteConcept}
-              />
+              <>
+                <ConceptList
+                  concepts={concepts}
+                  onUpdateConcept={handleUpdateConcept}
+                  onDeleteConcept={handleDeleteConcept}
+                />
+
+                {/* Start Quiz Button */}
+                <div className="flex justify-center pt-4">
+                  <button
+                    onClick={() => setShowQuizSession(true)}
+                    className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
+                  >
+                    Start Quiz
+                    <ArrowRight size={18} />
+                  </button>
+                </div>
+              </>
             )}
           </div>
         </>
